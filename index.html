@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Network</title>
+<meta name="description" content="Fantasy football trade relationships across six seasons, weighted by trade count or player value exchanged.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root{
+    --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E9EDF1;
+    --text:#131B24; --text-2:#4B5867; --text-3:#7C8896;
+    --border:#D7DEE4; --border-soft:#E4E9ED;
+    --count:#2563EB; --count-soft:#DCE7FD; --count-line:#2563EB;
+    --value:#B5750E; --value-soft:#F5E8D3; --value-line:#B5750E;
+    --node-fill:#FFFFFF; --node-stroke:#8A97A3;
+    --shadow: 0 1px 2px rgba(19,27,36,.06), 0 6px 20px rgba(19,27,36,.06);
+    --font-display:'IBM Plex Sans Condensed',system-ui,sans-serif;
+    --font-body:'IBM Plex Sans',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1520; --surface:#16202C; --surface-2:#1D2833;
+      --text:#E8EDF2; --text-2:#A8B4C0; --text-3:#74818F;
+      --border:#26323F; --border-soft:#202B36;
+      --count:#4E8DE0; --count-soft:#1E2C40; --count-line:#4E8DE0;
+      --value:#B5810A; --value-soft:#332B18; --value-line:#D9A233;
+      --node-fill:#1D2833; --node-stroke:#4B5867;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1520; --surface:#16202C; --surface-2:#1D2833;
+    --text:#E8EDF2; --text-2:#A8B4C0; --text-3:#74818F;
+    --border:#26323F; --border-soft:#202B36;
+    --count:#4E8DE0; --count-soft:#1E2C40; --count-line:#4E8DE0;
+    --value:#B5810A; --value-soft:#332B18; --value-line:#D9A233;
+    --node-fill:#1D2833; --node-stroke:#4B5867;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--font-body);
+    margin:0; padding:16px; padding-block:20px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; display:flex; flex-direction:column; gap:14px;}
+
+  header{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:10px 24px;}
+  .title-block h1{
+    font-family:var(--font-display); font-weight:700; font-size:28px; letter-spacing:.2px;
+    margin:0 0 2px; text-wrap:balance;
+  }
+  .title-block p{margin:0; color:var(--text-2); font-size:13.5px; max-width:52ch;}
+
+  .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+  .segmented{
+    display:flex; border:1px solid var(--border); border-radius:10px; overflow:hidden;
+    background:var(--surface);
+  }
+  .segmented button{
+    appearance:none; border:none; background:transparent; color:var(--text-2);
+    font-family:var(--font-body); font-weight:600; font-size:13px; padding:8px 14px;
+    cursor:pointer; display:flex; align-items:center; gap:7px; transition:background .15s;
+  }
+  .segmented button + button{border-left:1px solid var(--border);}
+  .segmented button .dot{width:8px; height:8px; border-radius:50%; background:var(--text-3);}
+  .segmented button[aria-pressed="true"]{background:var(--surface-2); color:var(--text);}
+  .segmented button[data-mode="count"][aria-pressed="true"] .dot{background:var(--count);}
+  .segmented button[data-mode="value"][aria-pressed="true"] .dot{background:var(--value);}
+  .segmented button:hover{color:var(--text);}
+
+  .seasons{display:flex; flex-wrap:wrap; gap:6px;}
+  .chip{
+    appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--text-2);
+    font-family:var(--font-mono); font-size:12px; font-weight:500; padding:6px 10px; border-radius:999px;
+    cursor:pointer; transition:background .15s,color .15s,border-color .15s;
+  }
+  .chip[aria-pressed="true"]{background:var(--text); color:var(--bg); border-color:var(--text);}
+  .chip.empty{opacity:.45;}
+
+  .layout{display:grid; grid-template-columns:1fr 300px; gap:14px; align-items:start;}
+  @media (max-width:820px){ .layout{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--surface); border:1px solid var(--border-soft); border-radius:14px;
+    box-shadow:var(--shadow);
+  }
+  .graph-panel{position:relative; overflow:hidden;}
+  #graph{display:block; width:100%; height:min(640px, 70vh); touch-action:none;}
+  .graph-empty{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:6px; color:var(--text-3); font-size:13px; text-align:center; padding:20px;
+  }
+  .graph-empty strong{color:var(--text-2); font-family:var(--font-display); font-size:16px; font-weight:700;}
+
+  .legend{
+    position:absolute; left:14px; bottom:14px; display:flex; flex-direction:column; gap:6px;
+    font-size:11.5px; color:var(--text-3); font-family:var(--font-mono);
+    background:color-mix(in srgb, var(--surface) 88%, transparent); padding:8px 10px; border-radius:10px;
+    border:1px solid var(--border-soft);
+  }
+  .legend .row{display:flex; align-items:center; gap:7px;}
+  .legend .swatch{width:20px; height:3px; border-radius:2px; background:var(--count-line);}
+
+  .side{display:flex; flex-direction:column; gap:14px;}
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--border-soft); border-radius:12px; overflow:hidden;}
+  .stat{background:var(--surface); padding:12px 14px;}
+  .stat .num{font-family:var(--font-mono); font-weight:600; font-size:20px; font-variant-numeric:tabular-nums;}
+  .stat .lbl{font-size:11px; color:var(--text-3); margin-top:2px;}
+
+  .side-panel{padding:14px 14px 16px;}
+  .side-panel h2{
+    font-family:var(--font-display); font-size:13px; font-weight:700; letter-spacing:.3px;
+    text-transform:uppercase; color:var(--text-2); margin:0 0 10px;
+  }
+  .rank-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:12.5px;
+  }
+  .rank-row:last-child{border-bottom:none;}
+  .rank-row .who{display:flex; align-items:center; gap:6px; min-width:0;}
+  .rank-row .who span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .rank-row .amt{font-family:var(--font-mono); font-weight:600; font-variant-numeric:tabular-nums; flex:none;}
+  .pair-bar{height:3px; border-radius:2px; margin-top:4px; background:var(--surface-2); overflow:hidden;}
+  .pair-bar > i{display:block; height:100%; background:var(--count-line);}
+  .mode-value .pair-bar > i{background:var(--value-line);}
+
+  details.log summary{
+    cursor:pointer; font-family:var(--font-display); font-weight:700; font-size:13px;
+    letter-spacing:.3px; text-transform:uppercase; color:var(--text-2); padding:14px;
+    list-style:none; display:flex; align-items:center; justify-content:space-between;
+  }
+  details.log summary::-webkit-details-marker{display:none;}
+  details.log summary::after{content:'▾'; color:var(--text-3); transition:transform .15s;}
+  details.log[open] summary::after{transform:rotate(180deg);}
+  .log-table-wrap{overflow-x:auto; padding:0 14px 14px;}
+  table.log{border-collapse:collapse; width:100%; font-size:12px; min-width:640px;}
+  table.log th{
+    text-align:left; font-family:var(--font-mono); font-weight:500; color:var(--text-3);
+    font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; padding:6px 8px; border-bottom:1px solid var(--border);
+    position:sticky; top:0; background:var(--surface);
+  }
+  table.log td{padding:6px 8px; border-bottom:1px solid var(--border-soft); vertical-align:top;}
+  table.log tr:hover td{background:var(--surface-2);}
+  .season-tag{font-family:var(--font-mono); color:var(--text-3);}
+  .val-tag{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+
+  footer{font-size:11.5px; color:var(--text-3); line-height:1.6; padding:2px 4px 8px;}
+  footer a{color:inherit;}
+
+  .tooltip{
+    position:fixed; pointer-events:none; z-index:50; background:var(--text); color:var(--bg);
+    font-family:var(--font-body); font-size:12px; padding:9px 11px; border-radius:8px;
+    box-shadow:0 8px 20px rgba(0,0,0,.25); max-width:300px; opacity:0; transition:opacity .1s;
+    line-height:1.45;
+  }
+  .tooltip b{font-family:var(--font-mono);}
+  .tooltip .tt-title{font-weight:600; margin-bottom:3px;}
+  .tooltip .tt-list{margin-top:6px; padding-top:6px; border-top:1px solid color-mix(in srgb, var(--bg) 25%, transparent);}
+  .tooltip .tt-trade{margin-bottom:4px;}
+  .tooltip .tt-trade i{font-style:normal; opacity:.85;}
+  .tooltip .tt-more{opacity:.65; font-size:11px;}
+
+  svg text{font-family:var(--font-body); fill:var(--text);}
+  .node-label{font-size:11.5px; font-weight:600; pointer-events:none;}
+  .node-sub{font-size:9.5px; fill:var(--text-3); pointer-events:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title-block">
+      <h1>Trade Network</h1>
+      <p>Who trades with whom, across 2021&ndash;2026. Switch between deal frequency and player value moved, and isolate a season.</p>
+    </div>
+    <div class="controls">
+      <div class="segmented" role="group" aria-label="Weighting mode">
+        <button data-mode="count" aria-pressed="true" type="button"><span class="dot"></span>Trade count</button>
+        <button data-mode="value" aria-pressed="false" type="button"><span class="dot"></span>Value exchanged</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="seasons" id="seasonChips" role="group" aria-label="Season filter"></div>
+
+  <div class="layout">
+    <div class="panel graph-panel">
+      <svg id="graph"></svg>
+      <div class="legend" id="legend"></div>
+      <div class="graph-empty" id="emptyState" hidden>
+        <strong>No trades yet</strong>
+        <span>This season hasn't had a trade matching the current filter.</span>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="panel stat-grid" id="statGrid"></div>
+      <div class="panel side-panel">
+        <h2 id="rankTitle">Most active pairs</h2>
+        <div id="rankList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <details class="log">
+      <summary>Full trade log (<span id="logCount">0</span> trades)</summary>
+      <div class="log-table-wrap">
+        <table class="log">
+          <thead><tr>
+            <th>Season</th><th>Wk</th><th>Manager A</th><th>Gave</th><th>Manager B</th><th>Gave</th><th>Value</th>
+          </tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <footer>
+    Built from 106 completed trades, 2021&ndash;2025 (2026 has none yet). Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB dynasty trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value &mdash; treat trades dominated by those assets as rougher estimates. Pure player-for-FAAB trades are excluded, matching the original request.
+  </footer>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+let DATA = null;
+
+const els = {
+  seasonChips: document.getElementById('seasonChips'),
+  statGrid: document.getElementById('statGrid'),
+  rankTitle: document.getElementById('rankTitle'),
+  rankList: document.getElementById('rankList'),
+  logBody: document.getElementById('logBody'),
+  logCount: document.getElementById('logCount'),
+  legend: document.getElementById('legend'),
+  emptyState: document.getElementById('emptyState'),
+  tooltip: document.getElementById('tooltip'),
+};
+
+let seasons = [];
+let ALL_SEASONS_WITH_FUTURE = [];
+let state = { mode: 'count', seasons: new Set() };
+
+function initFromData(){
+  seasons = Array.from(new Set(DATA.trades.map(t=>t.s))).sort();
+  const nextSeason = seasons.length ? Math.max(...seasons) + 1 : new Date().getFullYear();
+  ALL_SEASONS_WITH_FUTURE = seasons.includes(nextSeason) ? seasons : seasons.concat([nextSeason]).sort();
+  state.seasons = new Set(ALL_SEASONS_WITH_FUTURE);
+}
+
+function fmtVal(v){ return (Math.round(v*10)/10).toString(); }
+
+function buildChips(){
+  els.seasonChips.innerHTML = '';
+  const allBtn = document.createElement('button');
+  allBtn.className = 'chip'; allBtn.type='button'; allBtn.textContent = 'All seasons';
+  allBtn.setAttribute('aria-pressed', state.seasons.size === ALL_SEASONS_WITH_FUTURE.length);
+  allBtn.addEventListener('click', ()=>{ state.seasons = new Set(ALL_SEASONS_WITH_FUTURE); render(); });
+  els.seasonChips.appendChild(allBtn);
+
+  ALL_SEASONS_WITH_FUTURE.forEach(s=>{
+    const has = seasons.includes(s);
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (has? '' : ' empty');
+    btn.type='button';
+    btn.textContent = s + (has? '' : ' · none yet');
+    btn.setAttribute('aria-pressed', state.seasons.has(s) && state.seasons.size < ALL_SEASONS_WITH_FUTURE.length);
+    btn.addEventListener('click', ()=>{
+      if(state.seasons.size === ALL_SEASONS_WITH_FUTURE.length){ state.seasons = new Set([s]); }
+      else if(state.seasons.has(s) && state.seasons.size===1){ state.seasons = new Set(ALL_SEASONS_WITH_FUTURE); }
+      else if(state.seasons.has(s)){ state.seasons.delete(s); }
+      else { state.seasons.add(s); }
+      render();
+    });
+    els.seasonChips.appendChild(btn);
+  });
+}
+
+document.querySelectorAll('.segmented button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    state.mode = b.dataset.mode;
+    document.querySelectorAll('.segmented button').forEach(x=>x.setAttribute('aria-pressed', x===b));
+    render();
+  });
+});
+
+function currentTrades(){
+  return DATA.trades.filter(t=> state.seasons.has(t.s));
+}
+
+function aggregate(trades){
+  const pairs = new Map();
+  const degree = new Map();
+  DATA.managers.forEach(m=>degree.set(m, {count:0, value:0}));
+  trades.forEach(t=>{
+    const key = [t.a,t.b].sort().join('__');
+    if(!pairs.has(key)) pairs.set(key, {a:t.a,b:t.b,count:0,value:0,trades:[]});
+    const p = pairs.get(key);
+    p.count += 1; p.value += t.tv; p.trades.push(t);
+    const da = degree.get(t.a), db = degree.get(t.b);
+    da.count+=1; da.value+=t.tv; db.count+=1; db.value+=t.tv;
+  });
+  return {pairs:Array.from(pairs.values()), degree};
+}
+
+let sim = null;
+function render(){
+  buildChips();
+  const trades = currentTrades();
+  const {pairs, degree} = aggregate(trades);
+  const activeManagers = DATA.managers.filter(m=>degree.get(m).count>0);
+
+  els.logCount.textContent = trades.length;
+  renderStats(trades, pairs);
+  renderRank(pairs);
+  renderLog(trades);
+  renderLegend();
+  renderGraph(activeManagers, pairs, degree);
+}
+
+function renderStats(trades, pairs){
+  const totalValue = trades.reduce((s,t)=>s+t.tv,0);
+  const managersInvolved = new Set(); trades.forEach(t=>{managersInvolved.add(t.a); managersInvolved.add(t.b);});
+  const stats = [
+    {n: trades.length, l:'Trades', c:'--count'},
+    {n: fmtVal(totalValue), l:'Total value moved', c:'--value'},
+    {n: pairs.length, l:'Active pairs'},
+    {n: managersInvolved.size, l:'Owners involved'},
+  ];
+  els.statGrid.innerHTML = stats.map(s=>`<div class="stat"><div class="num"${s.c?` style="color:var(${s.c})"`:''}>${s.n}</div><div class="lbl">${s.l}</div></div>`).join('');
+}
+
+function renderRank(pairs){
+  els.rankTitle.textContent = state.mode==='count' ? 'Most frequent pairs' : 'Most value exchanged';
+  const sorted = pairs.slice().sort((x,y)=> (state.mode==='count'? y.count-x.count : y.value-x.value)).slice(0,8);
+  const max = sorted.length ? (state.mode==='count'? sorted[0].count : sorted[0].value) : 1;
+  els.rankList.className = state.mode==='value' ? 'mode-value' : '';
+  els.rankList.innerHTML = sorted.map(p=>{
+    const val = state.mode==='count' ? p.count : fmtVal(p.value);
+    const pct = Math.max(6, Math.round(100*(state.mode==='count'?p.count:p.value)/max));
+    return `<div class="rank-row">
+      <div class="who"><span>${p.a} &harr; ${p.b}</span></div>
+      <div class="amt">${val}</div>
+    </div>
+    <div class="pair-bar"><i style="width:${pct}%"></i></div>`;
+  }).join('') || '<div class="rank-row"><span>No trades in this filter.</span></div>';
+}
+
+function renderLog(trades){
+  const sorted = trades.slice().sort((a,b)=> a.s-b.s || a.w-b.w);
+  els.logBody.innerHTML = sorted.map(t=>{
+    const ag = t.ag.map(x=>`${x.n} (${fmtVal(x.v)})`).join(', ');
+    const bg = t.bg.map(x=>`${x.n} (${fmtVal(x.v)})`).join(', ');
+    return `<tr>
+      <td class="season-tag">${t.s}</td><td class="season-tag">${t.w}</td>
+      <td>${t.a}</td><td>${ag}</td>
+      <td>${t.b}</td><td>${bg}</td>
+      <td class="val-tag">${fmtVal(t.tv)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+}
+
+function renderLegend(){
+  const label = state.mode==='count' ? 'thicker &amp; deeper = more trades between the two owners' : 'thicker &amp; deeper = more value exchanged between them';
+  const soft = getVar(`--${state.mode}-soft`), deep = getVar(`--${state.mode}`);
+  els.legend.innerHTML = `<div class="row"><span class="swatch" style="background:linear-gradient(90deg, ${soft}, ${deep})"></span><span>${label}</span></div>
+  <div class="row"><span>node size &amp; color depth = that owner's total activity</span></div>`;
+}
+
+function renderGraph(activeManagers, pairs, degree){
+  const svg = d3.select('#graph');
+  svg.selectAll('*').remove();
+  const wrap = document.querySelector('.graph-panel');
+  const width = wrap.clientWidth, height = wrap.clientHeight || 560;
+  svg.attr('viewBox', [0,0,width,height]);
+
+  els.emptyState.hidden = pairs.length > 0 || activeManagers.length > 0;
+  if(activeManagers.length === 0){ if(sim) sim.stop(); return; }
+
+  const accent = state.mode==='count' ? getVar('--count') : getVar('--value');
+  const accentSoft = state.mode==='count' ? getVar('--count-soft') : getVar('--value-soft');
+  const nodeStroke = getVar('--node-stroke');
+
+  const metricOf = p => state.mode==='count' ? p.count : p.value;
+  const maxMetric = d3.max(pairs, metricOf) || 1;
+  const widthScale = d3.scaleSqrt().domain([0, maxMetric]).range([1.6, 12]);
+  const opacityScale = d3.scaleLinear().domain([0, maxMetric]).range([0.62, 1]);
+  const edgeColorScale = d3.scaleLinear().domain([0, maxMetric]).range([accentSoft, accent]).interpolate(d3.interpolateLab);
+
+  const maxDeg = d3.max(activeManagers, m=> state.mode==='count'? degree.get(m).count : degree.get(m).value) || 1;
+  const rScale = d3.scaleSqrt().domain([0, maxDeg]).range([14, 34]);
+  const nodeColorScale = d3.scaleLinear().domain([0, maxDeg]).range([accentSoft, accent]).interpolate(d3.interpolateLab);
+  const nodeMetric = d=> state.mode==='count'? d.deg.count : d.deg.value;
+
+  const nodes = activeManagers.map(m=>({id:m, deg:degree.get(m)}));
+  const nodeIndex = new Map(nodes.map(n=>[n.id,n]));
+  const links = pairs.map(p=>({source:p.a, target:p.b, pair:p}));
+
+  const g = svg.append('g');
+  svg.call(d3.zoom().scaleExtent([0.5,2.5]).on('zoom', (ev)=> g.attr('transform', ev.transform)));
+
+  const link = g.append('g').selectAll('line')
+    .data(links).join('line')
+    .attr('stroke', d=>edgeColorScale(metricOf(d.pair)))
+    .attr('stroke-opacity', d=>opacityScale(metricOf(d.pair)))
+    .attr('stroke-width', d=>widthScale(metricOf(d.pair)))
+    .attr('stroke-linecap','round')
+    .on('mousemove', (ev,d)=> showTip(ev, tipForPair(d.pair)))
+    .on('mouseleave', hideTip);
+
+  const nodeG = g.append('g').selectAll('g')
+    .data(nodes).join('g')
+    .style('cursor','pointer')
+    .call(drag());
+
+  nodeG.append('circle')
+    .attr('r', d=> rScale(nodeMetric(d)))
+    .attr('fill', d=> nodeColorScale(nodeMetric(d)))
+    .attr('fill-opacity', 0.88)
+    .attr('stroke', nodeStroke)
+    .attr('stroke-width', 1.4)
+    .on('mousemove', (ev,d)=> showTip(ev, tipForNode(d)))
+    .on('mouseleave', hideTip)
+    .on('mouseenter', (ev,d)=> highlight(d.id))
+    .on('mouseout', ()=> highlight(null));
+
+  nodeG.append('text')
+    .attr('class','node-label')
+    .attr('text-anchor','middle')
+    .attr('dy', d=> rScale(nodeMetric(d)) + 14)
+    .text(d=>d.id);
+
+  function highlight(id){
+    link.attr('stroke-opacity', d=>{
+      const base = opacityScale(metricOf(d.pair));
+      if(id===null) return base;
+      return (d.source.id===id || d.target.id===id) ? Math.min(1, base+0.25) : base*0.15;
+    });
+    nodeG.select('circle').attr('opacity', d=>{
+      if(id===null) return 1;
+      const connected = id===d.id || links.some(l=> (l.source.id===id&&l.target.id===d.id)||(l.target.id===id&&l.source.id===d.id));
+      return connected ? 1 : 0.35;
+    });
+  }
+
+  if(sim) sim.stop();
+  sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d=>d.id).distance(d=> 170 - Math.min(90, widthScale(metricOf(d.pair))*6)).strength(0.5))
+    .force('charge', d3.forceManyBody().strength(-420))
+    .force('center', d3.forceCenter(width/2, height/2))
+    .force('collide', d3.forceCollide().radius(d=> rScale(state.mode==='count'? d.deg.count : d.deg.value) + 26))
+    .on('tick', ticked);
+
+  function ticked(){
+    link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
+        .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+    nodeG.attr('transform', d=>`translate(${d.x},${d.y})`);
+  }
+
+  function drag(){
+    return d3.drag()
+      .on('start', (ev,d)=>{ if(!ev.active) sim.alphaTarget(0.25).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag', (ev,d)=>{ d.fx=ev.x; d.fy=ev.y; })
+      .on('end', (ev,d)=>{ if(!ev.active) sim.alphaTarget(0); d.fx=null; d.fy=null; });
+  }
+}
+
+function namesWithValues(list){
+  return list.map(x=>`${x.n} (${fmtVal(x.v)})`).join(', ') || '(nothing charted)';
+}
+function tipForPair(p){
+  const MAX_SHOWN = 6;
+  const sorted = p.trades.slice().sort((a,b)=> a.s-b.s || a.w-b.w);
+  const shown = sorted.slice(0, MAX_SHOWN);
+  const lines = shown.map(t=>
+    `<div class="tt-trade"><b>${t.s}</b> wk${t.w} &mdash; <b>${fmtVal(t.tv)}</b> value pts total<br>${t.a}: ${namesWithValues(t.ag)} &harr; ${t.b}: ${namesWithValues(t.bg)}</div>`
+  ).join('');
+  const more = sorted.length > MAX_SHOWN ? `<div class="tt-more">+${sorted.length-MAX_SHOWN} more &mdash; see full log below</div>` : '';
+  return `<div class="tt-title">${p.a} &harr; ${p.b}</div>
+    <b>${p.count}</b> trade${p.count!==1?'s':''} &middot; <b>${fmtVal(p.value)}</b> value pts total
+    <div class="tt-list">${lines}${more}</div>`;
+}
+function tipForNode(d){
+  return `<div class="tt-title">${d.id}</div><b>${d.deg.count}</b> trades &middot; <b>${fmtVal(d.deg.value)}</b> value pts total`;
+}
+function showTip(ev, html){
+  els.tooltip.innerHTML = html;
+  els.tooltip.style.opacity = 1;
+  const pad = 14;
+  let x = ev.clientX + pad, y = ev.clientY + pad;
+  if(x + 240 > window.innerWidth) x = ev.clientX - 240 - pad;
+  els.tooltip.style.left = x+'px'; els.tooltip.style.top = y+'px';
+}
+function hideTip(){ els.tooltip.style.opacity = 0; }
+
+function getVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+window.addEventListener('resize', ()=> render());
+
+fetch('data.json?_=' + Date.now())
+  .then(r => r.json())
+  .then(json => { DATA = json; initFromData(); render(); })
+  .catch(err => {
+    document.querySelector('.wrap').insertAdjacentHTML('afterbegin',
+      '<div style="padding:16px;border:1px solid var(--border);border-radius:10px;color:var(--text-2)">Could not load data.json (' + err + '). If you just set this page up, make sure update_league.py has run at least once and data.json sits next to this index.html.</div>');
+  });
+</script>
+</body>
+</html>

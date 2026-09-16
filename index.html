@@ -94,7 +94,9 @@
   .graph-empty{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     flex-direction:column; gap:6px; color:var(--text-3); font-size:13px; text-align:center; padding:20px;
+    pointer-events:none;
   }
+  .graph-empty[hidden]{display:none !important;}
   .graph-empty strong{color:var(--text-2); font-family:var(--font-display); font-size:16px; font-weight:700;}
 
   .legend{
@@ -148,6 +150,16 @@
   table.log tr:hover td{background:var(--surface-2);}
   .season-tag{font-family:var(--font-mono); color:var(--text-3);}
   .val-tag{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+  .log-subhead{
+    font-family:var(--font-display); font-size:12px; font-weight:700; letter-spacing:.3px;
+    text-transform:uppercase; color:var(--text-2); margin:14px 0 8px; padding:0 14px;
+  }
+  .log-table-wrap:first-of-type .log-subhead{margin-top:0;}
+  #ownerTotalsScope{font-family:var(--font-mono); font-weight:500; text-transform:none; color:var(--text-3); letter-spacing:0;}
+  table.log.owner-totals td.num, table.log.owner-totals th.num{text-align:right;}
+  table.log tfoot td{font-weight:600; border-top:2px solid var(--border); border-bottom:none; font-family:var(--font-mono);}
+  .net-pos{color:var(--value);}
+  .net-neg{color:var(--text-3);}
 
   footer{font-size:11.5px; color:var(--text-3); line-height:1.6; padding:2px 4px 8px;}
   footer a{color:inherit;}
@@ -210,6 +222,17 @@
     <details class="log">
       <summary>Full trade log (<span id="logCount">0</span> trades)</summary>
       <div class="log-table-wrap">
+        <h3 class="log-subhead">Value by owner<span id="ownerTotalsScope"></span></h3>
+        <table class="log owner-totals">
+          <thead><tr>
+            <th>Owner</th><th>Trades</th><th>Value given</th><th>Value received</th><th>Net</th>
+          </tr></thead>
+          <tbody id="ownerTotalsBody"></tbody>
+          <tfoot id="ownerTotalsFoot"></tfoot>
+        </table>
+      </div>
+      <div class="log-table-wrap">
+        <h3 class="log-subhead">Every trade</h3>
         <table class="log">
           <thead><tr>
             <th>Season</th><th>Wk</th><th>Manager A</th><th>Gave</th><th>Manager B</th><th>Gave</th><th>Value</th>
@@ -220,8 +243,8 @@
     </details>
   </div>
 
-  <footer>
-    Built from 106 completed trades, 2021&ndash;2025 (2026 has none yet). Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB dynasty trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value &mdash; treat trades dominated by those assets as rougher estimates. Pure player-for-FAAB trades are excluded, matching the original request.
+  <footer id="footerText">
+    <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> (not dynasty) trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value &mdash; treat trades dominated by those assets as rougher estimates. Pure player-for-FAAB trades are excluded, matching the original request.
   </footer>
 </div>
 
@@ -240,6 +263,10 @@ const els = {
   legend: document.getElementById('legend'),
   emptyState: document.getElementById('emptyState'),
   tooltip: document.getElementById('tooltip'),
+  ownerTotalsBody: document.getElementById('ownerTotalsBody'),
+  ownerTotalsFoot: document.getElementById('ownerTotalsFoot'),
+  ownerTotalsScope: document.getElementById('ownerTotalsScope'),
+  footerCountSentence: document.getElementById('footerCountSentence'),
 };
 
 let seasons = [];
@@ -319,6 +346,7 @@ function render(){
   renderStats(trades, pairs);
   renderRank(pairs);
   renderLog(trades);
+  renderOwnerTotals(trades);
   renderLegend();
   renderGraph(activeManagers, pairs, degree);
 }
@@ -363,6 +391,61 @@ function renderLog(trades){
       <td class="val-tag">${fmtVal(t.tv)}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="7" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+}
+
+function renderOwnerTotals(trades){
+  els.ownerTotalsScope.textContent = state.seasons.size < ALL_SEASONS_WITH_FUTURE.length
+    ? ` — ${Array.from(state.seasons).sort((a,b)=>a-b).join(', ')}`
+    : ' — all seasons';
+
+  const totals = new Map();
+  DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0}));
+  trades.forEach(t=>{
+    const a = totals.get(t.a), b = totals.get(t.b);
+    a.trades += 1; a.given += t.va; a.received += t.vb;
+    b.trades += 1; b.given += t.vb; b.received += t.va;
+  });
+  const rows = Array.from(totals.entries())
+    .filter(([,v])=> v.trades > 0)
+    .map(([name,v])=>({name, ...v, net: v.received - v.given}))
+    .sort((x,y)=> y.received - x.received);
+
+  els.ownerTotalsBody.innerHTML = rows.map(r=>{
+    const netClass = r.net > 0 ? 'net-pos' : (r.net < 0 ? 'net-neg' : '');
+    const netStr = (r.net > 0 ? '+' : '') + fmtVal(r.net);
+    return `<tr>
+      <td>${r.name}</td>
+      <td class="num val-tag">${r.trades}</td>
+      <td class="num val-tag">${fmtVal(r.given)}</td>
+      <td class="num val-tag">${fmtVal(r.received)}</td>
+      <td class="num val-tag ${netClass}">${netStr}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+
+  if(rows.length){
+    const totalGiven = rows.reduce((s,r)=>s+r.given,0);
+    const totalReceived = rows.reduce((s,r)=>s+r.received,0);
+    els.ownerTotalsFoot.innerHTML = `<tr>
+      <td>All owners</td>
+      <td class="num">${trades.length}</td>
+      <td class="num">${fmtVal(totalGiven)}</td>
+      <td class="num">${fmtVal(totalReceived)}</td>
+      <td class="num">${fmtVal(totalReceived-totalGiven)}</td>
+    </tr>`;
+  } else {
+    els.ownerTotalsFoot.innerHTML = '';
+  }
+}
+
+function renderFooterCount(){
+  const all = DATA.trades;
+  if(!all.length){ els.footerCountSentence.textContent = 'No completed trades yet.'; return; }
+  const seasonsAll = Array.from(new Set(all.map(t=>t.s))).sort((a,b)=>a-b);
+  const minS = seasonsAll[0], maxS = seasonsAll[seasonsAll.length-1];
+  const nextS = maxS + 1;
+  const span = minS === maxS ? `${minS}` : `${minS}–${maxS}`;
+  els.footerCountSentence.textContent =
+    `Built from ${all.length} completed trade${all.length!==1?'s':''}, ${span} (${nextS} has none yet).`;
 }
 
 function renderLegend(){
@@ -506,7 +589,7 @@ window.addEventListener('resize', ()=> render());
 
 fetch('data.json?_=' + Date.now())
   .then(r => r.json())
-  .then(json => { DATA = json; initFromData(); render(); })
+  .then(json => { DATA = json; initFromData(); renderFooterCount(); render(); })
   .catch(err => {
     document.querySelector('.wrap').insertAdjacentHTML('afterbegin',
       '<div style="padding:16px;border:1px solid var(--border);border-radius:10px;color:var(--text-2)">Could not load data.json (' + err + '). If you just set this page up, make sure update_league.py has run at least once and data.json sits next to this index.html.</div>');

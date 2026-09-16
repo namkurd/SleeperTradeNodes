@@ -118,9 +118,9 @@ def fetch_trades_for_season(season, league_id, players_by_id, max_week=18):
             a_gave = resolve_names(a_gave_ids)
             b_gave = resolve_names(b_gave_ids)
 
-            # exclude pure "1 player for FAAB" trades, matching the original rule
-            total_players = len(a_gave) + len(b_gave)
-            if total_players == 1:
+            # exclude trades where one side gave nothing tracked (almost always a
+            # player-for-FAAB trade - FAAB isn't captured as an asset here)
+            if not a_gave or not b_gave:
                 continue
 
             trades.append({

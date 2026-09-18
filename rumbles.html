@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DTF Club — Rumbles Live Standings</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-border: #262b36;
+    --text: #e8eaf0;
+    --text-dim: #9aa1b0;
+    --accent: #ff8a3d;
+    --accent-2: #4d9fff;
+    --good: #35c26b;
+    --bad: #e5484d;
+    --live: #35c26b;
+    --row-alt: #1c202a;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f6f9;
+      --panel: #ffffff;
+      --panel-border: #e2e5ec;
+      --text: #1a1d24;
+      --text-dim: #666e7e;
+      --accent: #e26a1f;
+      --accent-2: #2f6fd6;
+      --good: #1f9d52;
+      --bad: #d43b40;
+      --live: #1f9d52;
+      --row-alt: #f8f9fc;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 20px 16px 48px;
+  }
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: 1.35rem;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin: 0;
+  }
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    padding: 5px 10px 5px 8px;
+    border-radius: 999px;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .dot.live {
+    background: var(--live);
+    box-shadow: 0 0 0 0 rgba(53, 194, 107, 0.6);
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(53, 194, 107, 0.55); }
+    70% { box-shadow: 0 0 0 7px rgba(53, 194, 107, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(53, 194, 107, 0); }
+  }
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .toggle-group {
+    display: inline-flex;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 999px;
+    padding: 3px;
+    font-size: 0.78rem;
+  }
+  .toggle-group button {
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+  }
+  .toggle-group button.active {
+    background: var(--accent);
+    color: #1a1108;
+  }
+  .refresh-btn {
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .refresh-btn:active { transform: scale(0.97); }
+  .refresh-btn[disabled] { opacity: 0.5; cursor: default; }
+  .table-panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  thead th {
+    text-align: right;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--panel-border);
+    white-space: nowrap;
+  }
+  thead th:first-child, thead th:nth-child(2) { text-align: left; }
+  tbody td {
+    padding: 9px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--panel-border);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) { background: var(--row-alt); }
+  td.rank, td.manager { text-align: left; }
+  td.rank { font-variant-numeric: tabular-nums; color: var(--text-dim); width: 34px; }
+  td.manager { font-weight: 600; }
+  td.rumbles { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  td.thisweek { color: var(--accent-2); font-variant-numeric: tabular-nums; }
+  td.thisweek-pts { color: var(--accent-2); font-variant-numeric: tabular-nums; }
+  td { font-variant-numeric: tabular-nums; }
+  .badge-live {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--live);
+    border: 1px solid var(--live);
+    border-radius: 5px;
+    padding: 1px 4px;
+    margin-left: 5px;
+    vertical-align: middle;
+  }
+  footer {
+    margin-top: 14px;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+  .error-banner {
+    display: none;
+    background: rgba(229, 72, 77, 0.12);
+    border: 1px solid var(--bad);
+    color: var(--bad);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    margin-bottom: 12px;
+  }
+  .error-banner.show { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Rumbles Live Standings</h1>
+      <p class="subtitle" id="subtitle">DTF Club · loading…</p>
+    </div>
+    <div class="controls">
+      <div class="toggle-group" role="group" aria-label="Scoring source">
+        <button type="button" id="mode-actual" class="active">Actual</button>
+        <button type="button" id="mode-ppr">Generic PPR</button>
+        <button type="button" id="mode-custom">Our Custom Scoring</button>
+      </div>
+      <button type="button" class="refresh-btn" id="refresh-btn">Refresh now</button>
+    </div>
+  </header>
+
+  <div class="status-row" style="margin-bottom:12px;">
+    <span class="status-pill"><span class="dot" id="status-dot"></span><span id="status-text">Checking status…</span></span>
+    <span class="status-pill" id="updated-pill">Last updated —</span>
+  </div>
+
+  <div class="error-banner" id="error-banner"></div>
+
+  <div class="table-panel">
+    <table id="standings-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Manager</th>
+          <th>Rumbles</th>
+          <th>This Week</th>
+          <th>Points This Week</th>
+          <th>Rumble %</th>
+          <th>PF</th>
+          <th>PA</th>
+          <th>H2H W-L</th>
+          <th>Vs. Field W-L</th>
+        </tr>
+      </thead>
+      <tbody id="standings-body">
+        <tr><td colspan="9"><div class="empty-state">Loading standings…</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    <span>9 Rumbles for the H2H win, +1 per team outscored that week (up to 20/week).</span>
+    <span id="live-week-label"></span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var HISTORY_URL = "./rumbles_history.json";
+  var API_V1 = "https://api.sleeper.app/v1";
+  var STATS_BASE = "https://api.sleeper.app/stats/nfl";
+  var PROJECTIONS_BASE = "https://api.sleeper.app/projections/nfl";
+  var POLL_MS = 30000;
+  var MAX_RUMBLES_PER_WEEK = 20;
+  var RUMBLES_PER_WIN = 9;
+
+  var state = {
+    mode: "actual", // "actual" | "ppr" | "custom"
+    history: null, // parsed rumbles_history.json
+    historyError: null, // set when rumbles_history.json couldn't be loaded at all
+    live: null, // { week, season, isLive, byRoster: { roster_id: {score, oppScore, oppRosterId, h2hWin, rumbles} } }
+    liveError: null,
+    refreshing: false,
+    pollTimer: null
+  };
+
+  var MODE_LABELS = { actual: "Actual", ppr: "Generic PPR", custom: "Our Custom Scoring" };
+
+  var els = {
+    subtitle: document.getElementById("subtitle"),
+    statusDot: document.getElementById("status-dot"),
+    statusText: document.getElementById("status-text"),
+    updatedPill: document.getElementById("updated-pill"),
+    errorBanner: document.getElementById("error-banner"),
+    body: document.getElementById("standings-body"),
+    modeActual: document.getElementById("mode-actual"),
+    modePpr: document.getElementById("mode-ppr"),
+    modeCustom: document.getElementById("mode-custom"),
+    refreshBtn: document.getElementById("refresh-btn"),
+    liveWeekLabel: document.getElementById("live-week-label")
+  };
+
+  function num(v) { return typeof v === "number" && !isNaN(v) ? v : 0; }
+
+  function fetchJson(url) {
+    return fetch(url, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error(url + " -> HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  // Sleeper's bulk stats/projections endpoints return a JSON ARRAY of
+  // per-player entries shaped like:
+  //   { player_id: "12596", stats: { pts_ppr: 0.25, rec_yd: ..., ... }, week, team, opponent, ... }
+  // rather than a simple {player_id: statsObj} map. This converts that
+  // array into the player_id-keyed lookup the rest of this file expects,
+  // pulling the actual scoring categories out of each entry's nested
+  // "stats" object.
+  function arrayToPlayerMap(arr) {
+    var map = {};
+    if (!arr || !arr.length) return map;
+    arr.forEach(function (entry) {
+      if (entry && entry.player_id) {
+        map[entry.player_id] = entry.stats || {};
+      }
+    });
+    return map;
+  }
+
+  // ---- scoring helpers -----------------------------------------------
+
+  function dotProduct(statsObj, scoringSettings) {
+    if (!statsObj || !scoringSettings) return 0;
+    var total = 0;
+    for (var key in scoringSettings) {
+      if (!Object.prototype.hasOwnProperty.call(scoringSettings, key)) continue;
+      var weight = scoringSettings[key];
+      var val = statsObj[key];
+      if (typeof weight === "number" && typeof val === "number") {
+        total += weight * val;
+      }
+    }
+    return total;
+  }
+
+  // Three separate, non-blended lenses on a player's week -- pick ONE
+  // source (actual stats or Sleeper's projection) and ONE scoring system,
+  // never mixed:
+  //   "actual" -- what they've actually banked so far this week, scored
+  //     with the league's real custom scoring_settings (that's what
+  //     actually determines Rumbles). Legitimately 0 for anyone who
+  //     hasn't played yet, or whose box score is genuinely empty.
+  //   "ppr"    -- Sleeper's own projected team score, generic PPR scoring.
+  //     Pure projection, never blended with actual -- as long as Sleeper
+  //     has a projection for a starter, this is never 0.
+  //   "custom" -- that same Sleeper projection, recomputed against the
+  //     league's real scoring_settings instead of generic PPR.
+  function scoreFrom(source, scoringSettings, mode) {
+    if (!source) return 0;
+    if (mode === "actual" || mode === "custom") return dotProduct(source, scoringSettings);
+    return num(source.pts_ppr);
+  }
+
+  function playerPoints(playerId, statsMap, projMap, scoringSettings, mode) {
+    var source = mode === "actual" ? statsMap[playerId] : projMap[playerId];
+    return scoreFrom(source, scoringSettings, mode);
+  }
+
+  function rosterScore(roster, statsMap, projMap, scoringSettings, mode) {
+    var starters = roster.starters || [];
+    var total = 0;
+    for (var i = 0; i < starters.length; i++) {
+      var pid = starters[i];
+      if (!pid || pid === "0") continue;
+      total += playerPoints(pid, statsMap, projMap, scoringSettings, mode);
+    }
+    return total;
+  }
+
+  // Same "9 for the H2H win, +1 per team outscored" math as build_rumbles.py,
+  // applied to whatever scores we have (live or final).
+  function computeRumblesForWeek(scoresByRoster, pairsByMatchupId) {
+    var out = {};
+    var allIds = Object.keys(scoresByRoster);
+
+    allIds.forEach(function (rid) {
+      out[rid] = {
+        points: scoresByRoster[rid],
+        opponentRosterId: null,
+        opponentPoints: null,
+        h2hWin: null,
+        teamsOutscored: 0,
+        teamsOutscoredBy: 0,
+        rumbles: 0
+      };
+    });
+
+    Object.keys(pairsByMatchupId).forEach(function (mid) {
+      var pair = pairsByMatchupId[mid];
+      if (pair.length !== 2) return;
+      var a = pair[0], b = pair[1];
+      var pa = scoresByRoster[a], pb = scoresByRoster[b];
+      out[a].opponentRosterId = b;
+      out[a].opponentPoints = pb;
+      out[a].h2hWin = pa > pb;
+      out[b].opponentRosterId = a;
+      out[b].opponentPoints = pa;
+      out[b].h2hWin = pb > pa;
+    });
+
+    allIds.forEach(function (rid) {
+      var my = scoresByRoster[rid];
+      var outscored = 0, outscoredBy = 0;
+      allIds.forEach(function (other) {
+        if (other === rid) return;
+        if (my > scoresByRoster[other]) outscored++;
+        else if (scoresByRoster[other] > my) outscoredBy++;
+      });
+      out[rid].teamsOutscored = outscored;
+      out[rid].teamsOutscoredBy = outscoredBy;
+      out[rid].rumbles = outscored + (out[rid].h2hWin ? RUMBLES_PER_WIN : 0);
+    });
+
+    return out;
+  }
+
+  // ---- data loading ----------------------------------------------------
+
+  function loadHistory() {
+    state.historyError = null;
+    return fetchJson(HISTORY_URL)
+      .then(function (data) {
+        state.history = data;
+      })
+      .catch(function (err) {
+        // Don't swallow this silently -- an unreachable/missing
+        // rumbles_history.json is the #1 reason the page would ever look
+        // empty, and the person looking at it needs to know that's what
+        // happened rather than just seeing a blank table.
+        console.warn("[rumbles] couldn't load rumbles_history.json:", err);
+        state.historyError = err;
+        state.history = state.history || {
+          season: null,
+          weeks_completed: [],
+          max_rumbles_per_week: MAX_RUMBLES_PER_WEEK,
+          standings: []
+        };
+      });
+  }
+
+  function loadLive() {
+    state.liveError = null;
+    return fetchJson(API_V1 + "/state/nfl")
+      .then(function (nflState) {
+        var season = nflState.season;
+        var reportedWeek = nflState.week;
+        var seasonType = nflState.season_type; // "pre" | "regular" | "post" | "off"
+        var historyWeeksDone = (state.history && state.history.weeks_completed) || [];
+        var maxCompleted = historyWeeksDone.length ? Math.max.apply(null, historyWeeksDone) : 0;
+
+        // Sleeper's own "current week" pointer (state.week) doesn't always
+        // roll over the instant the last game of a week ends -- there can
+        // be a gap between Monday night's final whistle and whenever
+        // Sleeper flips it forward, sometimes not until close to Thursday
+        // kickoff of the next week. Rather than trust that pointer's exact
+        // timing, always target the next week AFTER whatever's already
+        // finalized in rumbles_history.json, so a fully-completed week
+        // never gets mistaken for "not live yet" while we wait for
+        // Sleeper's pointer to catch up.
+        var targetWeek = Math.max(reportedWeek || 0, maxCompleted + 1);
+        var weekAlreadyFinal = historyWeeksDone.indexOf(targetWeek) !== -1;
+        var eligible = seasonType !== "pre" && seasonType !== "off" && targetWeek && !weekAlreadyFinal;
+
+        if (!eligible) {
+          state.live = { week: targetWeek, season: season, seasonType: seasonType, isLive: false, byRoster: {} };
+          return null;
+        }
+
+        var leagueId = (state.history && state.history.league_id) || null;
+        if (!leagueId) {
+          state.live = { week: targetWeek, season: season, seasonType: seasonType, isLive: false, byRoster: {} };
+          return null;
+        }
+
+        // The bulk stats/projections endpoints 400 without a season_type
+        // query param, and -- unlike a simple {player_id: stats} map --
+        // they return a JSON ARRAY of objects shaped like
+        // {player_id, stats: {...}, week, team, opponent, ...}. See
+        // arrayToPlayerMap below for the conversion into the lookup map
+        // the rest of this code expects.
+        var seasonTypeParam = "?season_type=" + encodeURIComponent(seasonType);
+        return Promise.all([
+          fetchJson(API_V1 + "/league/" + leagueId),
+          fetchJson(API_V1 + "/league/" + leagueId + "/matchups/" + targetWeek),
+          fetchJson(STATS_BASE + "/" + season + "/" + targetWeek + seasonTypeParam).catch(function () { return []; }),
+          fetchJson(PROJECTIONS_BASE + "/" + season + "/" + targetWeek + seasonTypeParam).catch(function () { return []; })
+        ]).then(function (results) {
+          var league = results[0];
+          var matchups = results[1] || [];
+          var statsMap = arrayToPlayerMap(results[2]);
+          var projMap = arrayToPlayerMap(results[3]);
+          var scoringSettings = league.scoring_settings || {};
+
+          if (!matchups.length) {
+            // Sleeper hasn't posted matchups for this week yet (too early
+            // in the week) -- nothing to overlay, fall back to cumulative-
+            // only rather than erroring out.
+            state.live = { week: targetWeek, season: season, seasonType: seasonType, isLive: false, byRoster: {} };
+            return null;
+          }
+
+          var scoresActual = {};
+          var scoresPpr = {};
+          var scoresCustom = {};
+          var pairsByMatchupId = {};
+
+          matchups.forEach(function (m) {
+            var rid = m.roster_id;
+            scoresActual[rid] = rosterScore(m, statsMap, projMap, scoringSettings, "actual");
+            scoresPpr[rid] = rosterScore(m, statsMap, projMap, scoringSettings, "ppr");
+            scoresCustom[rid] = rosterScore(m, statsMap, projMap, scoringSettings, "custom");
+            var mid = m.matchup_id;
+            if (mid !== undefined && mid !== null) {
+              if (!pairsByMatchupId[mid]) pairsByMatchupId[mid] = [];
+              pairsByMatchupId[mid].push(rid);
+            }
+          });
+
+          var rumblesActual = computeRumblesForWeek(scoresActual, pairsByMatchupId);
+          var rumblesPpr = computeRumblesForWeek(scoresPpr, pairsByMatchupId);
+          var rumblesCustom = computeRumblesForWeek(scoresCustom, pairsByMatchupId);
+
+          var byRoster = {};
+          Object.keys(scoresActual).forEach(function (rid) {
+            byRoster[rid] = { actual: rumblesActual[rid], ppr: rumblesPpr[rid], custom: rumblesCustom[rid] };
+          });
+
+          state.live = { week: targetWeek, season: season, seasonType: seasonType, isLive: true, byRoster: byRoster };
+        });
+      })
+      .catch(function (err) {
+        console.warn("[rumbles] live fetch failed:", err);
+        state.liveError = err;
+      });
+  }
+
+  // ---- rendering ---------------------------------------------------------
+
+  function formatRecord(w, l) { return w + "-" + l; }
+
+  function buildCombinedStandings() {
+    var histStandings = (state.history && state.history.standings) || [];
+    var weeksCompleted = (state.history && state.history.weeks_completed) || [];
+    var live = state.live;
+    var liveActive = live && live.isLive;
+
+    var rows = histStandings.map(function (s) {
+      var rid = s.roster_id;
+      var liveInfo = liveActive && live.byRoster[rid] ? live.byRoster[rid][state.mode] : null;
+
+      var combinedRumbles = num(s.rumbles) + (liveInfo ? num(liveInfo.rumbles) : 0);
+      var combinedPf = num(s.pf) + (liveInfo ? num(liveInfo.points) : 0);
+      var combinedPa = num(s.pa) + (liveInfo ? num(liveInfo.opponentPoints) : 0);
+      var h2hW = num(s.h2h_w) + (liveInfo && liveInfo.h2hWin === true ? 1 : 0);
+      var h2hL = num(s.h2h_l) + (liveInfo && liveInfo.h2hWin === false ? 1 : 0);
+      var vfW = num(s.vs_field_w) + (liveInfo ? num(liveInfo.teamsOutscored) : 0);
+      var vfL = num(s.vs_field_l) + (liveInfo ? num(liveInfo.teamsOutscoredBy) : 0);
+
+      var weeksForPct = weeksCompleted.length + (liveInfo ? 1 : 0);
+      var pct = weeksForPct ? (combinedRumbles / (weeksForPct * MAX_RUMBLES_PER_WEEK)) * 100 : 0;
+
+      var thisWeekRumbles = liveInfo ? liveInfo.rumbles : num(s.last_completed_week_rumbles);
+      var thisWeekPoints = liveInfo ? liveInfo.points : num(s.last_completed_week_points);
+
+      return {
+        roster_id: rid,
+        manager: s.manager,
+        rumbles: combinedRumbles,
+        rumble_pct: pct,
+        this_week: thisWeekRumbles,
+        this_week_points: thisWeekPoints,
+        this_week_live: !!liveInfo,
+        pf: combinedPf,
+        pa: combinedPa,
+        h2h_w: h2hW,
+        h2h_l: h2hL,
+        vs_field_w: vfW,
+        vs_field_l: vfL
+      };
+    });
+
+    rows.sort(function (a, b) {
+      if (b.rumbles !== a.rumbles) return b.rumbles - a.rumbles;
+      return b.pf - a.pf;
+    });
+    rows.forEach(function (r, i) { r.rank = i + 1; });
+    return rows;
+  }
+
+  function render() {
+    var rows = buildCombinedStandings();
+
+    if (!rows.length) {
+      var emptyMsg;
+      if (state.historyError) {
+        emptyMsg = "Couldn't load rumbles_history.json (" + state.historyError.message + "). Make sure it's published next to this page and that the workflow has run at least once.";
+      } else {
+        emptyMsg = "No completed weeks yet this season — check back once Week 1 wraps up.";
+      }
+      els.body.innerHTML = '<tr><td colspan="10"><div class="empty-state">' + escapeHtml(emptyMsg) + "</div></td></tr>";
+    } else {
+      els.body.innerHTML = rows.map(function (r) {
+        return "<tr>" +
+          '<td class="rank">' + r.rank + "</td>" +
+          '<td class="manager">' + escapeHtml(r.manager) + "</td>" +
+          '<td class="rumbles">' + r.rumbles.toFixed(0) + "</td>" +
+          '<td class="thisweek">' + r.this_week.toFixed(0) + (r.this_week_live ? '<span class="badge-live">LIVE</span>' : "") + "</td>" +
+          '<td class="thisweek-pts">' + r.this_week_points.toFixed(1) + (r.this_week_live ? '<span class="badge-live">LIVE</span>' : "") + "</td>" +
+          "<td>" + r.rumble_pct.toFixed(1) + "%</td>" +
+          "<td>" + r.pf.toFixed(1) + "</td>" +
+          "<td>" + r.pa.toFixed(1) + "</td>" +
+          "<td>" + formatRecord(r.h2h_w, r.h2h_l) + "</td>" +
+          "<td>" + formatRecord(r.vs_field_w, r.vs_field_l) + "</td>" +
+          "</tr>";
+      }).join("");
+    }
+
+    var season = (state.history && state.history.season) || (state.live && state.live.season) || "";
+    els.subtitle.textContent = "DTF Club · " + season + " season" + (season ? " · Rumbles reset each year" : "");
+
+    var isLive = state.live && state.live.isLive;
+    els.statusDot.className = "dot" + (isLive ? " live" : "");
+    if (isLive) {
+      els.statusText.textContent = "Live — Week " + state.live.week + " in progress";
+      els.liveWeekLabel.textContent = "Showing live Week " + state.live.week + " (" + MODE_LABELS[state.mode] + ")";
+    } else if (state.live && state.live.seasonType === "off") {
+      els.statusText.textContent = "Offseason";
+      els.liveWeekLabel.textContent = "";
+    } else if (state.live && state.live.seasonType === "pre") {
+      els.statusText.textContent = "Preseason — Rumbles start Week 1";
+      els.liveWeekLabel.textContent = "";
+    } else {
+      els.statusText.textContent = "Not live right now";
+      els.liveWeekLabel.textContent = "";
+    }
+
+    els.updatedPill.textContent = "Last updated " + new Date().toLocaleTimeString();
+
+    if (state.historyError && rows.length) {
+      // We have rows (from a prior successful load) but the most recent
+      // attempt to refresh rumbles_history.json failed -- say so without
+      // blanking out what we've already got.
+      els.errorBanner.textContent = "Couldn't refresh season standings (" + state.historyError.message + ") — showing the last known data.";
+      els.errorBanner.classList.add("show");
+    } else if (state.liveError) {
+      els.errorBanner.textContent = "Couldn't reach Sleeper for a live update — showing the last known standings. Retrying every 30s.";
+      els.errorBanner.classList.add("show");
+    } else {
+      els.errorBanner.classList.remove("show");
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // ---- controls ------------------------------------------------------
+
+  function setMode(mode) {
+    state.mode = mode;
+    els.modeActual.classList.toggle("active", mode === "actual");
+    els.modePpr.classList.toggle("active", mode === "ppr");
+    els.modeCustom.classList.toggle("active", mode === "custom");
+    render();
+  }
+
+  function refreshNow() {
+    if (state.refreshing) return;
+    state.refreshing = true;
+    els.refreshBtn.disabled = true;
+    els.refreshBtn.textContent = "Refreshing…";
+    loadLive()
+      .then(render)
+      .finally(function () {
+        state.refreshing = false;
+        els.refreshBtn.disabled = false;
+        els.refreshBtn.textContent = "Refresh now";
+      });
+  }
+
+  els.modeActual.addEventListener("click", function () { setMode("actual"); });
+  els.modePpr.addEventListener("click", function () { setMode("ppr"); });
+  els.modeCustom.addEventListener("click", function () { setMode("custom"); });
+  els.refreshBtn.addEventListener("click", refreshNow);
+
+  // ---- boot ------------------------------------------------------------
+
+  loadHistory()
+    .then(loadLive)
+    .then(render)
+    .catch(function (err) {
+      console.error("[rumbles] boot failed:", err);
+      render();
+    })
+    .finally(function () {
+      state.pollTimer = setInterval(function () {
+        loadLive().then(render);
+      }, POLL_MS);
+    });
+})();
+</script>
+</body>
+</html>

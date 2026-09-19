@@ -277,7 +277,7 @@
   </div>
 
   <footer id="footerText">
-    <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value. Trades where one side gave nothing (a player-for-FAAB trade, since FAAB isn't captured as an asset) are excluded entirely. The Fantasy Pts columns are a separate, real measurement from actual games: for each traded player, points earned in the acquiring manager's starting lineup, starting the week after the trade and stopping the moment that manager trades or drops them again; benched weeks score 0 and don't end the count, but leaving the roster does. If the acquiring manager's team missed the playoffs that season, counting also stops at the end of the regular season (week 15 for 2021&ndash;2025, week 14 starting 2026) even if they kept the player &mdash; points scored once a non-playoff team's season is over don't count. Hover a Fantasy Pts cell for the per-player breakdown, including how much of each player's total came in the regular season versus the playoffs, and whether a stopped clock was caused by a trade, a drop, or a missed playoff berth.
+    <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value. Trades where one side gave nothing (a player-for-FAAB trade, since FAAB isn't captured as an asset) are excluded entirely. The Fantasy Pts columns are a separate, real measurement from actual games: for each traded player, points earned in the acquiring manager's starting lineup, starting the week after the trade and stopping the moment that manager trades or drops them again; benched weeks score 0 and don't end the count, but leaving the roster does. If the acquiring manager's team missed the playoffs that season, counting also stops at the end of the regular season (week 15 for 2021&ndash;2025, week 14 starting 2026) even if they kept the player &mdash; points scored once a non-playoff team's season is over don't count. Hover a Fantasy Pts cell for the per-player breakdown, including how much of each player's total came in the regular season versus the playoffs, and whether a stopped clock was caused by a trade, a drop, or a missed playoff berth. In the graph above, node size reflects an owner's total trading activity while node color is a separate signal &mdash; how far ahead (amber) or behind (grey) they are on net trade value across the current filter; hover a node for the exact numbers, including their net fantasy points gained.
   </footer>
 </div>
 
@@ -464,7 +464,7 @@ function render(){
   renderLog(logTrades);
   renderOwnerTotals(trades);
   renderLegend();
-  renderGraph(activeManagers, pairs, degree);
+  renderGraph(activeManagers, pairs, degree, trades);
 }
 
 function renderStats(trades, pairs){
@@ -530,11 +530,10 @@ function renderLog(trades){
   updateSortIndicators('everyTradeTable', logSort);
 }
 
-function renderOwnerTotals(trades){
-  els.ownerTotalsScope.textContent = state.seasons.size < ALL_SEASONS_WITH_FUTURE.length
-    ? ` — ${Array.from(state.seasons).sort((a,b)=>a-b).join(', ')}`
-    : ' — all seasons';
-
+function computeOwnerTotals(trades){
+  // Per-manager trade-value and fantasy-point totals for the given trade set - the single
+  // source of truth for "net" numbers, shared by the owner-totals table and the graph's
+  // node coloring so the two views never disagree.
   const totals = new Map();
   DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0, fpGiven:0, fpReceived:0}));
   trades.forEach(t=>{
@@ -546,9 +545,19 @@ function renderOwnerTotals(trades){
       b.fpGiven += t.fpa; b.fpReceived += t.fpb;
     }
   });
+  totals.forEach(v=>{ v.net = v.received - v.given; v.fpNet = v.fpReceived - v.fpGiven; });
+  return totals;
+}
+
+function renderOwnerTotals(trades){
+  els.ownerTotalsScope.textContent = state.seasons.size < ALL_SEASONS_WITH_FUTURE.length
+    ? ` — ${Array.from(state.seasons).sort((a,b)=>a-b).join(', ')}`
+    : ' — all seasons';
+
+  const totals = computeOwnerTotals(trades);
   let rows = Array.from(totals.entries())
     .filter(([,v])=> v.trades > 0)
-    .map(([name,v])=>({name, ...v, net: v.received - v.given, fpNet: v.fpReceived - v.fpGiven}));
+    .map(([name,v])=>({name, ...v}));
   rows = sortRows(rows, ownerSort, (a,b)=> b.received - a.received);
 
   els.ownerTotalsBody.innerHTML = rows.map(r=>{
@@ -599,11 +608,13 @@ function renderFooterCount(){
 function renderLegend(){
   const label = state.mode==='count' ? 'thicker &amp; deeper = more trades between the two owners' : 'thicker &amp; deeper = more value exchanged between them';
   const soft = getVar(`--${state.mode}-soft`), deep = getVar(`--${state.mode}`);
+  const negColor = getVar('--text-3'), posColor = getVar('--value');
   els.legend.innerHTML = `<div class="row"><span class="swatch" style="background:linear-gradient(90deg, ${soft}, ${deep})"></span><span>${label}</span></div>
-  <div class="row"><span>node size &amp; color depth = that owner's total activity</span></div>`;
+  <div class="row"><span>node size = that owner's total activity</span></div>
+  <div class="row"><span class="swatch" style="background:linear-gradient(90deg, ${negColor}, var(--border-soft), ${posColor})"></span><span>node color = net trade value: behind (grey) &harr; ahead (amber)</span></div>`;
 }
 
-function renderGraph(activeManagers, pairs, degree){
+function renderGraph(activeManagers, pairs, degree, trades){
   const svg = d3.select('#graph');
   svg.selectAll('*').remove();
   const wrap = document.querySelector('.graph-panel');
@@ -625,10 +636,23 @@ function renderGraph(activeManagers, pairs, degree){
 
   const maxDeg = d3.max(activeManagers, m=> state.mode==='count'? degree.get(m).count : degree.get(m).value) || 1;
   const rScale = d3.scaleSqrt().domain([0, maxDeg]).range([14, 34]);
-  const nodeColorScale = d3.scaleLinear().domain([0, maxDeg]).range([accentSoft, accent]).interpolate(d3.interpolateLab);
   const nodeMetric = d=> state.mode==='count'? d.deg.count : d.deg.value;
 
-  const nodes = activeManagers.map(m=>({id:m, deg:degree.get(m)}));
+  // Node fill is a separate channel from node size: size still tracks activity (trade count
+  // or value, per the mode toggle), but color is a diverging scale on each owner's net trade
+  // value (received minus given) across the current filter - so at a glance you can see who's
+  // come out ahead vs. behind, not just who trades the most. Reuses the app's own existing
+  // "net-pos"/"net-neg" tokens (amber = ahead, muted grey = behind) so it reads consistently
+  // with the tables below rather than introducing a new color family.
+  const ownerTotals = computeOwnerTotals(trades);
+  const negColor = getVar('--text-3'), neutralColor = getVar('--border-soft'), posColor = getVar('--value');
+  const maxAbsNet = d3.max(activeManagers, m=> Math.abs((ownerTotals.get(m)||{net:0}).net)) || 1;
+  const nodeFillScale = d3.scaleLinear()
+    .domain([-maxAbsNet, 0, maxAbsNet])
+    .range([negColor, neutralColor, posColor])
+    .interpolate(d3.interpolateLab);
+
+  const nodes = activeManagers.map(m=>({id:m, deg:degree.get(m), ...(ownerTotals.get(m) || {net:0, fpNet:0})}));
   const nodeIndex = new Map(nodes.map(n=>[n.id,n]));
   const links = pairs.map(p=>({source:p.a, target:p.b, pair:p}));
 
@@ -651,7 +675,7 @@ function renderGraph(activeManagers, pairs, degree){
 
   nodeG.append('circle')
     .attr('r', d=> rScale(nodeMetric(d)))
-    .attr('fill', d=> nodeColorScale(nodeMetric(d)))
+    .attr('fill', d=> nodeFillScale(d.net))
     .attr('fill-opacity', 0.88)
     .attr('stroke', nodeStroke)
     .attr('stroke-width', 1.4)
@@ -717,7 +741,11 @@ function tipForPair(p){
     <div class="tt-list">${lines}${more}</div>`;
 }
 function tipForNode(d){
-  return `<div class="tt-title">${d.id}</div><b>${d.deg.count}</b> trades &middot; <b>${fmtVal(d.deg.value)}</b> value pts total`;
+  const netStr = (d.net > 0 ? '+' : '') + fmtVal(d.net);
+  const hasFp = d.fpNet !== null && d.fpNet !== undefined && !Number.isNaN(d.fpNet);
+  const fpNetStr = hasFp ? (d.fpNet > 0 ? '+' : '') + fmtVal(d.fpNet) : '&mdash;';
+  return `<div class="tt-title">${d.id}</div><b>${d.deg.count}</b> trades &middot; <b>${fmtVal(d.deg.value)}</b> value pts total
+    <div class="tt-list">Net trade value: <b>${netStr}</b><br>Net fantasy pts gained: <b>${fpNetStr}</b></div>`;
 }
 function fpAssetLine(a){
   if(a.fp === undefined || a.fp === null) return `<div class="tt-trade">${a.n} &mdash; no fantasy data</div>`;

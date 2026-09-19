@@ -10,6 +10,18 @@ Fantasy-points tracking fills in gradually as the season is played: each run onl
 through the most recently completed week, and re-running later (the whole point of the
 schedule) adds newly played weeks to every still-open trade automatically.
 
+Tracking rules (mirrors the frozen 2021-2025 pipeline exactly):
+  - Counting starts the week AFTER the trade.
+  - A benched week scores 0 but keeps the tracking window open; the moment the asset is no
+    longer on the acquiring roster at all, tracking stops for good. Sleeper's transaction log
+    is used to tell apart "traded away again" from "dropped/waived".
+  - If the acquiring manager's team does NOT make the playoffs that season, tracking stops at
+    the end of the regular season (week 14 for 2026+) even if they still roster the asset.
+    Since the playoff bracket doesn't exist until the regular season ends, this cap is only
+    applied once Sleeper's winners_bracket endpoint actually returns it - until then every
+    trade is tracked as if still in the regular season, same as the "not played yet" case.
+  - Each asset's total is also split into regular-season points vs playoff points.
+
 Run this from GitHub Actions on a schedule (see .github/workflows/update.yml) or by
 hand any time with:  PARSE_API_KEY=pmx_xxx python3 update_league.py
 
@@ -48,6 +60,32 @@ NORMALIZED_SCALE = 100.0
 SLEEPER_BASE = "https://api.sleeper.app/v1"
 session = requests.Session()
 
+# ---- manager identity: sleeper username -> real first name (confirmed with the owner) ----
+USERNAME_TO_FIRST = {
+    "GreenBayBlay": "Joe",
+    "HaanRolo": "Haan",
+    "Hellerch": "Christian",
+    "Legendaly": "Aidan",
+    "Ozviagin": "Oleg",
+    "Stevster77": "Steven",
+    "ilovelamp917": "Alex",
+    "lalu101": "Ankit",
+    "namkurd": "Ben",
+    "rrakower": "Ryan",
+    "thehebrewhammer24": "Jake",
+    "tkitaev": "Tommy",
+    "Kohogan18": "Kaitlyn",   # new 2026 owner
+    "slondon1": "Stephanie",  # new 2026 owner
+}
+
+
+def canonical_manager(raw_name):
+    return USERNAME_TO_FIRST.get(raw_name, raw_name)
+
+
+def reg_season_end_week(season):
+    return 14 if season >= 2026 else 15
+
 
 def sleeper_get(path):
     r = session.get(f"{SLEEPER_BASE}{path}", timeout=30)
@@ -81,7 +119,7 @@ def get_league_chain_ids(season):
 def fetch_roster_and_user_maps(league_id):
     rosters = sleeper_get(f"/league/{league_id}/rosters")
     users = sleeper_get(f"/league/{league_id}/users")
-    uid_to_name = {u["user_id"]: u["display_name"] for u in users}
+    uid_to_name = {u["user_id"]: canonical_manager(u["display_name"]) for u in users}
     roster_to_name = {r["roster_id"]: uid_to_name.get(r["owner_id"], f"roster{r['roster_id']}") for r in rosters}
     return roster_to_name
 
@@ -140,6 +178,79 @@ def fetch_trades_for_season(season, league_id, players_by_id, max_week=18):
     return trades
 
 
+def fetch_league_transactions(league_id, max_week=18):
+    """Every transaction across the season (not just trades), used to tell apart "traded away
+    again" from "dropped/waived" when an asset leaves a roster. Cached per week; an empty
+    response for a given week isn't cached, since more transactions can still happen there
+    later in the season (mirrors fetch_matchup_week's caching rule)."""
+    all_txns = []
+    for week in range(1, max_week + 1):
+        cache_path = CACHE_DIR / f"txns_{league_id}_wk{week}.json"
+        if cache_path.exists():
+            txns = json.loads(cache_path.read_text())
+        else:
+            try:
+                txns = sleeper_get(f"/league/{league_id}/transactions/{week}")
+            except requests.HTTPError:
+                continue
+            if txns:
+                cache_path.write_text(json.dumps(txns))
+        for t in txns:
+            t["_week"] = week
+        all_txns.extend(txns)
+    return all_txns
+
+
+def build_drops_index(league_id, max_week=18):
+    """{(roster_id, player_id): [(week, txn_type), ...]} for every drop this season."""
+    index = {}
+    for t in fetch_league_transactions(league_id, max_week):
+        if t.get("status") != "complete":
+            continue
+        for pid, rid in (t.get("drops") or {}).items():
+            index.setdefault((rid, str(pid)), []).append((t["_week"], t.get("type")))
+    return index
+
+
+def find_departure_type(drops_index, wk_departed_after, roster_id, pid):
+    """The asset was last seen on roster_id's roster in week wk_departed_after and gone by
+    wk_departed_after+1. Find the transaction that moved it and say whether it was a trade
+    or a drop/waiver. Searches a small window since transaction weeks and roster-snapshot
+    weeks can be off by one at the boundary."""
+    pid_key = str(pid)
+    entries = drops_index.get((roster_id, pid_key), [])
+    candidates = [(wk, ttype) for wk, ttype in entries if wk_departed_after <= wk <= wk_departed_after + 1]
+    if not candidates:
+        candidates = [(wk, ttype) for wk, ttype in entries if wk <= wk_departed_after + 2]
+    if not candidates:
+        return "unknown"
+    candidates.sort(key=lambda c: c[0])
+    return "traded" if candidates[-1][1] == "trade" else "dropped"
+
+
+def fetch_winners_bracket(league_id):
+    """The set of roster_ids that made the playoffs, once Sleeper generates the bracket (after
+    the regular season ends). Returns None if the bracket doesn't exist yet - deliberately not
+    cached in that case, mirroring fetch_matchup_week, so a later scheduled run picks it up
+    the moment the playoffs are set."""
+    cache_path = CACHE_DIR / f"winners_bracket_{league_id}.json"
+    if cache_path.exists():
+        data = json.loads(cache_path.read_text())
+    else:
+        data = sleeper_get(f"/league/{league_id}/winners_bracket")
+        if data:
+            cache_path.write_text(json.dumps(data))
+    if not data:
+        return None
+    roster_ids = set()
+    for game in data:
+        for key in ("t1", "t2"):
+            rid = game.get(key)
+            if isinstance(rid, int):
+                roster_ids.add(rid)
+    return roster_ids or None
+
+
 def fetch_parse_snapshot(season, week):
     """One week's full redraft trade-value rankings, cached to disk so re-runs don't re-hit the API
     for weeks that are already in the past (only the current/most-recent week can still change)."""
@@ -176,36 +287,53 @@ def fetch_matchup_week(season, league_id, week):
     return data
 
 
-def track_fantasy_impact(season, league_id, start_week, roster_id, asset_id, max_week=18):
+def track_asset(season, league_id, start_week, roster_id, asset_id, made_playoffs, drops_index, max_week=18):
     """How many real fantasy points this asset delivered in the ACQUIRING roster's starting
-    lineup, counting from the week after the trade onward. Mirrors the same rule used for the
-    frozen 2021-2025 history: a benched week scores 0 but keeps tracking; the moment the asset
-    is no longer on that roster at all (traded or dropped again), tracking stops there for good.
-    If a week's matchup data doesn't exist yet (this season is still in progress), tracking
-    also stops for now, but with no "departed" flag - the next scheduled run will pick up newly
-    played weeks and this trade's totals will keep filling in as the season continues.
-    Returns (points, weeks_started, weeks_benched, departed_after_week_or_None)."""
-    total = 0.0
+    lineup, counting from the week after the trade onward, split into regular-season vs
+    playoff points. Mirrors the frozen 2021-2025 history's track_asset exactly:
+      - a benched week scores 0 but keeps tracking open
+      - the moment the asset leaves the roster (traded/dropped again), tracking stops there
+        for good, and the transaction log says which one it was
+      - if the acquiring manager's team did NOT make the playoffs, tracking is capped at the
+        end of the regular season even if they still roster the asset
+      - if a week's matchup data doesn't exist yet (season still in progress), tracking just
+        stops for now with no stop_reason - a later scheduled run fills in newly played weeks
+    Returns (points, reg_points, playoff_points, weeks_started, weeks_benched, stop_week, stop_reason)."""
+    reg_end = reg_season_end_week(season)
+    cap_week = max_week if made_playoffs else reg_end
+    total = reg_total = playoff_total = 0.0
     weeks_started = weeks_benched = 0
-    departed_after = None
+    stop_week = None
+    stop_reason = None
     pid_key = str(asset_id)
     for wk in range(start_week, max_week + 1):
+        if wk > cap_week:
+            stop_week = cap_week
+            stop_reason = "season_ended"
+            break
         data = fetch_matchup_week(season, league_id, wk)
         if not data:
             break  # not played/generated yet - try again on a later scheduled run
         entry = next((e for e in data if e.get("roster_id") == roster_id), None)
         if entry is None or pid_key not in (entry.get("players") or []):
-            departed_after = wk - 1
+            stop_week = wk - 1
+            dtype = find_departure_type(drops_index, stop_week, roster_id, pid_key)
+            stop_reason = {"traded": "traded", "dropped": "dropped"}.get(dtype, "unknown_departure")
             break
         started = pid_key in (entry.get("starters") or [])
         pts = (entry.get("players_points") or {}).get(pid_key) or 0.0
         if started:
             total += pts
+            if wk <= reg_end:
+                reg_total += pts
+            else:
+                playoff_total += pts
             weeks_started += 1
         else:
             weeks_benched += 1
         time.sleep(0.05)  # be polite to Sleeper's API
-    return round(total, 2), weeks_started, weeks_benched, departed_after
+    return (round(total, 2), round(reg_total, 2), round(playoff_total, 2),
+            weeks_started, weeks_benched, stop_week, stop_reason)
 
 
 def value_2026_plus(season, week, asset, season_max_tracker):
@@ -237,23 +365,37 @@ def build_2026_plus_trades():
     all_trades = []
     for season, league_id in sorted(LEAGUE_IDS.items()):
         raw_trades = fetch_trades_for_season(season, league_id, players_by_id)
+        if not raw_trades:
+            continue
+        bracket = fetch_winners_bracket(league_id)  # None until Sleeper generates the playoffs
+        drops_index = build_drops_index(league_id)
         for t in raw_trades:
             start_week = t["week"] + 1
+            # until the bracket exists, don't cap anyone - treat it like the regular season is
+            # still ongoing (same "wait for real data" spirit as fetch_matchup_week)
+            a_made_playoffs = bracket is None or t["roster_a"] in bracket
+            b_made_playoffs = bracket is None or t["roster_b"] in bracket
             # a_gave assets end up on B's roster; b_gave assets end up on A's roster
             a_gave = []
             for asset in t["a_gave_raw"]:
                 v, note = value_2026_plus(t["season"], t["week"], asset, season_max_tracker)
-                fp, st, bn, dep = track_fantasy_impact(t["season"], league_id, start_week, t["roster_b"], asset["id"])
+                fp, fpr, fpo, st, bn, stop_wk, stop_reason = track_asset(
+                    t["season"], league_id, start_week, t["roster_b"], asset["id"],
+                    b_made_playoffs, drops_index)
                 a_gave.append({"name": asset["name"], "value": v, "note": note,
-                                "fantasy_points": fp, "weeks_started": st, "weeks_benched": bn,
-                                "departed_after_week": dep})
+                                "fantasy_points": fp, "reg_points": fpr, "playoff_points": fpo,
+                                "weeks_started": st, "weeks_benched": bn,
+                                "stop_week": stop_wk, "stop_reason": stop_reason})
             b_gave = []
             for asset in t["b_gave_raw"]:
                 v, note = value_2026_plus(t["season"], t["week"], asset, season_max_tracker)
-                fp, st, bn, dep = track_fantasy_impact(t["season"], league_id, start_week, t["roster_a"], asset["id"])
+                fp, fpr, fpo, st, bn, stop_wk, stop_reason = track_asset(
+                    t["season"], league_id, start_week, t["roster_a"], asset["id"],
+                    a_made_playoffs, drops_index)
                 b_gave.append({"name": asset["name"], "value": v, "note": note,
-                                "fantasy_points": fp, "weeks_started": st, "weeks_benched": bn,
-                                "departed_after_week": dep})
+                                "fantasy_points": fp, "reg_points": fpr, "playoff_points": fpo,
+                                "weeks_started": st, "weeks_benched": bn,
+                                "stop_week": stop_wk, "stop_reason": stop_reason})
             value_a = round(sum(x["value"] for x in a_gave), 2)
             value_b = round(sum(x["value"] for x in b_gave), 2)
             fp_a_received = round(sum(x["fantasy_points"] for x in b_gave), 2)
@@ -276,8 +418,9 @@ def to_compact(trades):
     for t in trades:
         managers.add(t["manager_a"]); managers.add(t["manager_b"])
         asset_fields = lambda x: {"n": x["name"], "v": x["value"], "fp": x["fantasy_points"],
+                                   "fpr": x["reg_points"], "fpo": x["playoff_points"],
                                    "st": x["weeks_started"], "bn": x["weeks_benched"],
-                                   "dep": x["departed_after_week"]}
+                                   "stop": x["stop_reason"], "stopWk": x["stop_week"]}
         out.append({
             "s": t["season"], "w": t["week"], "a": t["manager_a"], "b": t["manager_b"],
             "ag": [asset_fields(x) for x in t["a_gave"]],

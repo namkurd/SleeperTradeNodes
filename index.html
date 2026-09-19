@@ -163,7 +163,7 @@
   }
   #tradeManagerFilterCount{font-family:var(--font-mono); font-weight:500; text-transform:none; color:var(--text-3); letter-spacing:0; margin-left:8px;}
   .val-tag, .season-tag{text-align:center;}
-  table.log th.num{text-align:center;}
+  table.log td.num, table.log th.num{text-align:center;}
   #everyTradeTable td:nth-child(5), #everyTradeTable td:nth-child(6){min-width:150px;}
   .asset-list{display:grid; grid-template-columns:1fr max-content; column-gap:10px; row-gap:3px; align-items:baseline;}
   .asset-name{min-width:0; white-space:normal; word-break:break-word;}
@@ -277,7 +277,7 @@
   </div>
 
   <footer id="footerText">
-    <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value. Trades where one side gave nothing (a player-for-FAAB trade, since FAAB isn't captured as an asset) are excluded entirely. The Fantasy Pts columns are a separate, real measurement from actual games: for each traded player, points earned in the acquiring manager's starting lineup, starting the week after the trade and stopping the moment that manager trades or drops them again; benched weeks score 0 and don't end the count, but leaving the roster does. Hover a Fantasy Pts cell for the per-player breakdown.
+    <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value. Trades where one side gave nothing (a player-for-FAAB trade, since FAAB isn't captured as an asset) are excluded entirely. The Fantasy Pts columns are a separate, real measurement from actual games: for each traded player, points earned in the acquiring manager's starting lineup, starting the week after the trade and stopping the moment that manager trades or drops them again; benched weeks score 0 and don't end the count, but leaving the roster does. If the acquiring manager's team missed the playoffs that season, counting also stops at the end of the regular season (week 15 for 2021&ndash;2025, week 14 starting 2026) even if they kept the player &mdash; points scored once a non-playoff team's season is over don't count. Hover a Fantasy Pts cell for the per-player breakdown, including how much of each player's total came in the regular season versus the playoffs, and whether a stopped clock was caused by a trade, a drop, or a missed playoff berth.
   </footer>
 </div>
 
@@ -722,11 +722,17 @@ function tipForNode(d){
 function fpAssetLine(a){
   if(a.fp === undefined || a.fp === null) return `<div class="tt-trade">${a.n} &mdash; no fantasy data</div>`;
   let s = `${a.n} &mdash; <b>${fmtVal(a.fp)}</b> pts`;
+  if(a.fpr !== undefined && a.fpr !== null && a.fpo !== undefined && a.fpo !== null){
+    s += ` <span style="opacity:.8">(${fmtVal(a.fpr)} reg season, ${fmtVal(a.fpo)} playoffs)</span>`;
+  }
   const bits = [];
   if(a.st !== null && a.st !== undefined) bits.push(`${a.st} started`);
   if(a.bn) bits.push(`${a.bn} benched`);
   if(bits.length) s += ` (${bits.join(', ')})`;
-  if(a.dep !== null && a.dep !== undefined) s += `<br><i>left the roster after wk ${a.dep}</i>`;
+  if(a.stop === 'traded') s += `<br><i>traded away again after wk ${a.stopWk}</i>`;
+  else if(a.stop === 'dropped') s += `<br><i>dropped after wk ${a.stopWk}</i>`;
+  else if(a.stop === 'season_ended') s += `<br><i>tracking stopped after wk ${a.stopWk} &mdash; team missed the playoffs</i>`;
+  else if(a.stop === 'unknown_departure') s += `<br><i>left the roster after wk ${a.stopWk}</i>`;
   return `<div class="tt-trade">${s}</div>`;
 }
 function tipForFantasyTrade(t){

@@ -156,6 +156,12 @@
   }
   .log-table-wrap:first-of-type .log-subhead{margin-top:0;}
   #ownerTotalsScope{font-family:var(--font-mono); font-weight:500; text-transform:none; color:var(--text-3); letter-spacing:0;}
+  .mgr-filter{
+    margin-left:10px; font-family:var(--font-mono); font-weight:500; font-size:11px;
+    text-transform:none; letter-spacing:0; color:var(--text-2); background:var(--surface);
+    border:1px solid var(--border); border-radius:6px; padding:4px 8px; cursor:pointer;
+  }
+  #tradeManagerFilterCount{font-family:var(--font-mono); font-weight:500; text-transform:none; color:var(--text-3); letter-spacing:0; margin-left:8px;}
   table.log.owner-totals td.num, table.log.owner-totals th.num{text-align:right;}
   table.log tfoot td{font-weight:600; border-top:2px solid var(--border); border-bottom:none; font-family:var(--font-mono);}
   table.log th.sortable{cursor:pointer; user-select:none;}
@@ -236,18 +242,21 @@
             <th class="sortable num" data-key="given"><span class="th-label">Value given</span><span class="sort-arrow"></span></th>
             <th class="sortable num" data-key="received"><span class="th-label">Value received</span><span class="sort-arrow"></span></th>
             <th class="sortable num" data-key="net"><span class="th-label">Net</span><span class="sort-arrow"></span></th>
+            <th class="sortable num fp-col" data-key="fpNet"><span class="th-label">Fantasy Pts Gained</span><span class="sort-arrow"></span></th>
           </tr></thead>
           <tbody id="ownerTotalsBody"></tbody>
           <tfoot id="ownerTotalsFoot"></tfoot>
         </table>
       </div>
       <div class="log-table-wrap">
-        <h3 class="log-subhead">Every trade</h3>
+        <h3 class="log-subhead">Every trade<select id="tradeManagerFilter" class="mgr-filter"><option value="">All managers</option></select><span id="tradeManagerFilterCount"></span></h3>
         <table class="log" id="everyTradeTable">
           <thead><tr>
             <th class="sortable" data-key="s"><span class="th-label">Season</span><span class="sort-arrow"></span></th>
             <th class="sortable" data-key="w"><span class="th-label">Wk</span><span class="sort-arrow"></span></th>
-            <th>Manager A</th><th>Manager B</th><th>A Gave</th><th>B Gave</th>
+            <th class="sortable" data-key="a"><span class="th-label">Manager A</span><span class="sort-arrow"></span></th>
+            <th class="sortable" data-key="b"><span class="th-label">Manager B</span><span class="sort-arrow"></span></th>
+            <th>A Gave</th><th>B Gave</th>
             <th class="sortable" data-key="va"><span class="th-label">A Gave Value</span><span class="sort-arrow"></span></th>
             <th class="sortable" data-key="vb"><span class="th-label">B Gave Value</span><span class="sort-arrow"></span></th>
             <th class="sortable" data-key="tv"><span class="th-label">Total Trade Value</span><span class="sort-arrow"></span></th>
@@ -286,6 +295,8 @@ const els = {
   ownerTotalsFoot: document.getElementById('ownerTotalsFoot'),
   ownerTotalsScope: document.getElementById('ownerTotalsScope'),
   footerCountSentence: document.getElementById('footerCountSentence'),
+  tradeManagerFilter: document.getElementById('tradeManagerFilter'),
+  tradeManagerFilterCount: document.getElementById('tradeManagerFilterCount'),
 };
 
 let seasons = [];
@@ -299,14 +310,43 @@ function initFromData(){
   state.seasons = new Set(ALL_SEASONS_WITH_FUTURE);
 }
 let lastTrades = [];
+let lastLogTrades = [];
 let logSort = {key: null, dir: 1};
 let ownerSort = {key: null, dir: 1};
+let tradeManagerFilter = '';
+let managerFilterOptionsBuilt = false;
+
+function buildManagerFilterOptions(){
+  if(managerFilterOptionsBuilt || !els.tradeManagerFilter) return;
+  const names = DATA.managers.slice().sort((a,b)=> a.localeCompare(b));
+  names.forEach(name=>{
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    els.tradeManagerFilter.appendChild(opt);
+  });
+  els.tradeManagerFilter.addEventListener('change', ()=>{
+    tradeManagerFilter = els.tradeManagerFilter.value;
+    render();
+  });
+  managerFilterOptionsBuilt = true;
+}
+
+function applyManagerFilter(trades){
+  if(!tradeManagerFilter) return trades;
+  return trades.filter(t=> t.a === tradeManagerFilter || t.b === tradeManagerFilter);
+}
 
 function sortRows(rows, sortState, fallbackCmp){
   const copy = rows.slice();
   if(sortState && sortState.key){
     const {key, dir} = sortState;
-    copy.sort((a,b)=> (a[key]-b[key])*dir || (fallbackCmp ? fallbackCmp(a,b) : 0));
+    copy.sort((a,b)=>{
+      const av = a[key], bv = b[key];
+      const cmp = (typeof av === 'string' || typeof bv === 'string')
+        ? String(av).localeCompare(String(bv))
+        : (av - bv);
+      return cmp*dir || (fallbackCmp ? fallbackCmp(a,b) : 0);
+    });
   } else if(fallbackCmp){
     copy.sort(fallbackCmp);
   }
@@ -390,16 +430,22 @@ function aggregate(trades){
 
 let sim = null;
 function render(){
+  buildManagerFilterOptions();
   buildChips();
   const trades = currentTrades();
   const {pairs, degree} = aggregate(trades);
   const activeManagers = DATA.managers.filter(m=>degree.get(m).count>0);
+  const logTrades = applyManagerFilter(trades);
 
-  els.logCount.textContent = trades.length;
+  els.logCount.textContent = logTrades.length;
   lastTrades = trades;
+  lastLogTrades = logTrades;
+  if(els.tradeManagerFilterCount){
+    els.tradeManagerFilterCount.textContent = tradeManagerFilter ? `(${logTrades.length} of ${trades.length})` : '';
+  }
   renderStats(trades, pairs);
   renderRank(pairs);
-  renderLog(trades);
+  renderLog(logTrades);
   renderOwnerTotals(trades);
   renderLegend();
   renderGraph(activeManagers, pairs, degree);
@@ -471,38 +517,48 @@ function renderOwnerTotals(trades){
     : ' — all seasons';
 
   const totals = new Map();
-  DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0}));
+  DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0, fpGiven:0, fpReceived:0}));
   trades.forEach(t=>{
     const a = totals.get(t.a), b = totals.get(t.b);
     a.trades += 1; a.given += t.va; a.received += t.vb;
     b.trades += 1; b.given += t.vb; b.received += t.va;
+    if(t.fpa != null && t.fpb != null){
+      a.fpGiven += t.fpb; a.fpReceived += t.fpa;
+      b.fpGiven += t.fpa; b.fpReceived += t.fpb;
+    }
   });
   let rows = Array.from(totals.entries())
     .filter(([,v])=> v.trades > 0)
-    .map(([name,v])=>({name, ...v, net: v.received - v.given}));
+    .map(([name,v])=>({name, ...v, net: v.received - v.given, fpNet: v.fpReceived - v.fpGiven}));
   rows = sortRows(rows, ownerSort, (a,b)=> b.received - a.received);
 
   els.ownerTotalsBody.innerHTML = rows.map(r=>{
     const netClass = r.net > 0 ? 'net-pos' : (r.net < 0 ? 'net-neg' : '');
     const netStr = (r.net > 0 ? '+' : '') + fmtVal(r.net);
+    const fpNetClass = r.fpNet > 0 ? 'net-pos' : (r.fpNet < 0 ? 'net-neg' : '');
+    const fpNetStr = (r.fpNet > 0 ? '+' : '') + fmtVal(r.fpNet);
     return `<tr>
       <td>${r.name}</td>
       <td class="num val-tag">${r.trades}</td>
       <td class="num val-tag">${fmtVal(r.given)}</td>
       <td class="num val-tag">${fmtVal(r.received)}</td>
       <td class="num val-tag ${netClass}">${netStr}</td>
+      <td class="num val-tag fp-cell ${fpNetClass}">${fpNetStr}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="5" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+  }).join('') || '<tr><td colspan="6" style="color:var(--text-3)">No trades in this filter.</td></tr>';
 
   if(rows.length){
     const totalGiven = rows.reduce((s,r)=>s+r.given,0);
     const totalReceived = rows.reduce((s,r)=>s+r.received,0);
+    const totalFpGiven = rows.reduce((s,r)=>s+r.fpGiven,0);
+    const totalFpReceived = rows.reduce((s,r)=>s+r.fpReceived,0);
     els.ownerTotalsFoot.innerHTML = `<tr>
       <td>All owners</td>
       <td class="num">${trades.length}</td>
       <td class="num">${fmtVal(totalGiven)}</td>
       <td class="num">${fmtVal(totalReceived)}</td>
       <td class="num">${fmtVal(totalReceived-totalGiven)}</td>
+      <td class="num">${fmtVal(totalFpReceived-totalFpGiven)}</td>
     </tr>`;
   } else {
     els.ownerTotalsFoot.innerHTML = '';
@@ -685,7 +741,7 @@ function getVar(name){
 
 window.addEventListener('resize', ()=> render());
 
-wireSortableHeaders('everyTradeTable', logSort, ()=> renderLog(lastTrades));
+wireSortableHeaders('everyTradeTable', logSort, ()=> renderLog(lastLogTrades));
 wireSortableHeaders('ownerTotalsTable', ownerSort, ()=> renderOwnerTotals(lastTrades));
 
 els.logBody.addEventListener('mousemove', (ev)=>{

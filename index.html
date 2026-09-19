@@ -162,7 +162,12 @@
     border:1px solid var(--border); border-radius:6px; padding:4px 8px; cursor:pointer;
   }
   #tradeManagerFilterCount{font-family:var(--font-mono); font-weight:500; text-transform:none; color:var(--text-3); letter-spacing:0; margin-left:8px;}
-  table.log.owner-totals td.num, table.log.owner-totals th.num{text-align:right;}
+  .val-tag, .season-tag{text-align:center;}
+  table.log th.num{text-align:center;}
+  #everyTradeTable td:nth-child(5), #everyTradeTable td:nth-child(6){min-width:150px;}
+  .asset-list{display:grid; grid-template-columns:1fr max-content; column-gap:10px; row-gap:3px; align-items:baseline;}
+  .asset-name{min-width:0; white-space:normal; word-break:break-word;}
+  .asset-value{font-family:var(--font-mono); font-variant-numeric:tabular-nums; color:var(--text-2); text-align:center; white-space:nowrap;}
   table.log tfoot td{font-weight:600; border-top:2px solid var(--border); border-bottom:none; font-family:var(--font-mono);}
   table.log th.sortable{cursor:pointer; user-select:none;}
   table.log th.sortable:hover{color:var(--text-2);}
@@ -252,18 +257,18 @@
         <h3 class="log-subhead">Every trade<select id="tradeManagerFilter" class="mgr-filter"><option value="">All managers</option></select><span id="tradeManagerFilterCount"></span></h3>
         <table class="log" id="everyTradeTable">
           <thead><tr>
-            <th class="sortable" data-key="s"><span class="th-label">Season</span><span class="sort-arrow"></span></th>
-            <th class="sortable" data-key="w"><span class="th-label">Wk</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="s"><span class="th-label">Season</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="w"><span class="th-label">Wk</span><span class="sort-arrow"></span></th>
             <th class="sortable" data-key="a"><span class="th-label">Manager A</span><span class="sort-arrow"></span></th>
             <th class="sortable" data-key="b"><span class="th-label">Manager B</span><span class="sort-arrow"></span></th>
             <th>A Gave</th><th>B Gave</th>
-            <th class="sortable" data-key="va"><span class="th-label">A Gave Value</span><span class="sort-arrow"></span></th>
-            <th class="sortable" data-key="vb"><span class="th-label">B Gave Value</span><span class="sort-arrow"></span></th>
-            <th class="sortable" data-key="tv"><span class="th-label">Total Trade Value</span><span class="sort-arrow"></span></th>
-            <th class="sortable" data-key="net"><span class="th-label">Net (A)</span><span class="sort-arrow"></span></th>
-            <th class="sortable fp-col" data-key="fpa"><span class="th-label">Fantasy Pts (A)</span><span class="sort-arrow"></span></th>
-            <th class="sortable fp-col" data-key="fpb"><span class="th-label">Fantasy Pts (B)</span><span class="sort-arrow"></span></th>
-            <th class="sortable fp-col" data-key="fpNet"><span class="th-label">Fantasy Net (A)</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="va"><span class="th-label">A Gave Value</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="vb"><span class="th-label">B Gave Value</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="tv"><span class="th-label">Total Trade Value</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="net"><span class="th-label">Net (A)</span><span class="sort-arrow"></span></th>
+            <th class="sortable num fp-col" data-key="fpa"><span class="th-label">Fantasy Pts (A)</span><span class="sort-arrow"></span></th>
+            <th class="sortable num fp-col" data-key="fpb"><span class="th-label">Fantasy Pts (B)</span><span class="sort-arrow"></span></th>
+            <th class="sortable num fp-col" data-key="fpNet"><span class="th-label">Fantasy Net (A)</span><span class="sort-arrow"></span></th>
           </tr></thead>
           <tbody id="logBody"></tbody>
         </table>
@@ -334,6 +339,17 @@ function buildManagerFilterOptions(){
 function applyManagerFilter(trades){
   if(!tradeManagerFilter) return trades;
   return trades.filter(t=> t.a === tradeManagerFilter || t.b === tradeManagerFilter);
+}
+
+function orientForManager(t, manager){
+  if(!manager || t.a === manager) return t;
+  return Object.assign({}, t, {
+    a: t.b, b: t.a,
+    ag: t.bg, bg: t.ag,
+    va: t.vb, vb: t.va,
+    fpa: t.fpb, fpb: t.fpa,
+    fpNet: (t.fpNet === null || t.fpNet === undefined) ? t.fpNet : -t.fpNet,
+  });
 }
 
 function sortRows(rows, sortState, fallbackCmp){
@@ -435,7 +451,7 @@ function render(){
   const trades = currentTrades();
   const {pairs, degree} = aggregate(trades);
   const activeManagers = DATA.managers.filter(m=>degree.get(m).count>0);
-  const logTrades = applyManagerFilter(trades);
+  const logTrades = applyManagerFilter(trades).map(t=> orientForManager(t, tradeManagerFilter));
 
   els.logCount.textContent = logTrades.length;
   lastTrades = trades;
@@ -481,14 +497,17 @@ function renderRank(pairs){
 
 let lastTradeById = {};
 
+function assetListHtml(list){
+  if(!list || !list.length) return '<span style="color:var(--text-3)">&mdash;</span>';
+  return `<div class="asset-list">${list.map(x=>`<span class="asset-name">${x.n}</span><span class="asset-value">${fmtVal(x.v)}</span>`).join('')}</div>`;
+}
+
 function renderLog(trades){
   const withNet = trades.map(t=> Object.assign({net: t.vb - t.va}, t));
   const sorted = sortRows(withNet, logSort, (a,b)=> a.s-b.s || a.w-b.w);
   lastTradeById = {};
   sorted.forEach(t=> lastTradeById[t.id] = t);
   els.logBody.innerHTML = sorted.map(t=>{
-    const ag = t.ag.map(x=>`${x.n} (${fmtVal(x.v)})`).join(', ');
-    const bg = t.bg.map(x=>`${x.n} (${fmtVal(x.v)})`).join(', ');
     const netClass = t.net > 0 ? 'net-pos' : (t.net < 0 ? 'net-neg' : '');
     const netStr = (t.net > 0 ? '+' : '') + fmtVal(t.net);
     const hasFp = t.fpNet !== null && t.fpNet !== undefined;
@@ -497,8 +516,8 @@ function renderLog(trades){
     return `<tr data-tid="${t.id}">
       <td class="season-tag">${t.s}</td><td class="season-tag">${t.w}</td>
       <td>${t.a}</td><td>${t.b}</td>
-      <td>${ag}</td>
-      <td>${bg}</td>
+      <td>${assetListHtml(t.ag)}</td>
+      <td>${assetListHtml(t.bg)}</td>
       <td class="val-tag">${fmtVal(t.va)}</td>
       <td class="val-tag">${fmtVal(t.vb)}</td>
       <td class="val-tag">${fmtVal(t.tv)}</td>

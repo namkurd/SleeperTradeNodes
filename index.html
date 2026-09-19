@@ -162,6 +162,8 @@
   table.log th.sortable:hover{color:var(--text-2);}
   table.log th.sortable.sort-active{color:var(--text);}
   table.log th .sort-arrow{display:inline-block; min-width:9px; margin-left:3px; font-size:9px;}
+  td.fp-cell{cursor:help; border-bottom-style:dashed;}
+  th.fp-col .th-label{border-bottom:1px dashed var(--text-3);}
   .net-pos{color:var(--value);}
   .net-neg{color:var(--text-3);}
 
@@ -250,6 +252,9 @@
             <th class="sortable" data-key="vb"><span class="th-label">B Gave Value</span><span class="sort-arrow"></span></th>
             <th class="sortable" data-key="tv"><span class="th-label">Total Trade Value</span><span class="sort-arrow"></span></th>
             <th class="sortable" data-key="net"><span class="th-label">Net (A)</span><span class="sort-arrow"></span></th>
+            <th class="sortable fp-col" data-key="fpa"><span class="th-label">Fantasy Pts (A)</span><span class="sort-arrow"></span></th>
+            <th class="sortable fp-col" data-key="fpb"><span class="th-label">Fantasy Pts (B)</span><span class="sort-arrow"></span></th>
+            <th class="sortable fp-col" data-key="fpNet"><span class="th-label">Fantasy Net (A)</span><span class="sort-arrow"></span></th>
           </tr></thead>
           <tbody id="logBody"></tbody>
         </table>
@@ -258,7 +263,7 @@
   </div>
 
   <footer id="footerText">
-    <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value. Trades where one side gave nothing (a player-for-FAAB trade, since FAAB isn't captured as an asset) are excluded entirely.
+    <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value. Trades where one side gave nothing (a player-for-FAAB trade, since FAAB isn't captured as an asset) are excluded entirely. The Fantasy Pts columns are a separate, real measurement from actual games: for each traded player, points earned in the acquiring manager's starting lineup, starting the week after the trade and stopping the moment that manager trades or drops them again; benched weeks score 0 and don't end the count, but leaving the roster does. Hover a Fantasy Pts cell for the per-player breakdown.
   </footer>
 </div>
 
@@ -428,15 +433,22 @@ function renderRank(pairs){
   }).join('') || '<div class="rank-row"><span>No trades in this filter.</span></div>';
 }
 
+let lastTradeById = {};
+
 function renderLog(trades){
   const withNet = trades.map(t=> Object.assign({net: t.vb - t.va}, t));
   const sorted = sortRows(withNet, logSort, (a,b)=> a.s-b.s || a.w-b.w);
+  lastTradeById = {};
+  sorted.forEach(t=> lastTradeById[t.id] = t);
   els.logBody.innerHTML = sorted.map(t=>{
     const ag = t.ag.map(x=>`${x.n} (${fmtVal(x.v)})`).join(', ');
     const bg = t.bg.map(x=>`${x.n} (${fmtVal(x.v)})`).join(', ');
     const netClass = t.net > 0 ? 'net-pos' : (t.net < 0 ? 'net-neg' : '');
     const netStr = (t.net > 0 ? '+' : '') + fmtVal(t.net);
-    return `<tr>
+    const hasFp = t.fpNet !== null && t.fpNet !== undefined;
+    const fpNetClass = !hasFp ? '' : (t.fpNet > 0 ? 'net-pos' : (t.fpNet < 0 ? 'net-neg' : ''));
+    const fpNetStr = !hasFp ? '&mdash;' : (t.fpNet > 0 ? '+' : '') + fmtVal(t.fpNet);
+    return `<tr data-tid="${t.id}">
       <td class="season-tag">${t.s}</td><td class="season-tag">${t.w}</td>
       <td>${t.a}</td><td>${t.b}</td>
       <td>${ag}</td>
@@ -445,8 +457,11 @@ function renderLog(trades){
       <td class="val-tag">${fmtVal(t.vb)}</td>
       <td class="val-tag">${fmtVal(t.tv)}</td>
       <td class="val-tag ${netClass}">${netStr}</td>
+      <td class="val-tag fp-cell">${hasFp ? fmtVal(t.fpa) : '&mdash;'}</td>
+      <td class="val-tag fp-cell">${hasFp ? fmtVal(t.fpb) : '&mdash;'}</td>
+      <td class="val-tag fp-cell ${fpNetClass}">${fpNetStr}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="10" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+  }).join('') || '<tr><td colspan="13" style="color:var(--text-3)">No trades in this filter.</td></tr>';
   updateSortIndicators('everyTradeTable', logSort);
 }
 
@@ -629,6 +644,31 @@ function tipForPair(p){
 function tipForNode(d){
   return `<div class="tt-title">${d.id}</div><b>${d.deg.count}</b> trades &middot; <b>${fmtVal(d.deg.value)}</b> value pts total`;
 }
+function fpAssetLine(a){
+  if(a.fp === undefined || a.fp === null) return `<div class="tt-trade">${a.n} &mdash; no fantasy data</div>`;
+  let s = `${a.n} &mdash; <b>${fmtVal(a.fp)}</b> pts`;
+  const bits = [];
+  if(a.st !== null && a.st !== undefined) bits.push(`${a.st} started`);
+  if(a.bn) bits.push(`${a.bn} benched`);
+  if(bits.length) s += ` (${bits.join(', ')})`;
+  if(a.dep !== null && a.dep !== undefined) s += `<br><i>left the roster after wk ${a.dep}</i>`;
+  return `<div class="tt-trade">${s}</div>`;
+}
+function tipForFantasyTrade(t){
+  if(t.fpNet === null || t.fpNet === undefined){
+    return `<div class="tt-title">${t.s} wk${t.w}</div>No fantasy-outcome data for this trade.`;
+  }
+  return `<div class="tt-title">${t.s} wk${t.w} &mdash; fantasy outcome</div>
+    <div class="tt-list" style="margin-top:0;padding-top:0;border-top:none">
+      <b>${t.a}</b> received &mdash; ${fmtVal(t.fpa)} pts total
+      ${t.bg.map(fpAssetLine).join('')}
+    </div>
+    <div class="tt-list">
+      <b>${t.b}</b> received &mdash; ${fmtVal(t.fpb)} pts total
+      ${t.ag.map(fpAssetLine).join('')}
+    </div>
+    <div class="tt-more">points scored starting the week after the trade, only while started for the acquiring team; benched or off-roster weeks don't count</div>`;
+}
 function showTip(ev, html){
   els.tooltip.innerHTML = html;
   els.tooltip.style.opacity = 1;
@@ -647,6 +687,16 @@ window.addEventListener('resize', ()=> render());
 
 wireSortableHeaders('everyTradeTable', logSort, ()=> renderLog(lastTrades));
 wireSortableHeaders('ownerTotalsTable', ownerSort, ()=> renderOwnerTotals(lastTrades));
+
+els.logBody.addEventListener('mousemove', (ev)=>{
+  const cell = ev.target.closest('.fp-cell');
+  if(!cell){ hideTip(); return; }
+  const row = cell.closest('tr[data-tid]');
+  const t = row && lastTradeById[row.dataset.tid];
+  if(!t){ hideTip(); return; }
+  showTip(ev, tipForFantasyTrade(t));
+});
+els.logBody.addEventListener('mouseleave', hideTip);
 
 fetch('data.json?_=' + Date.now())
   .then(r => r.json())

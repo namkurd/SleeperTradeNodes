@@ -1,6 +1,6 @@
 # Trade Network - live setup guide
 
-This turns the trade network page into something that updates itself: once a week, a
+This turns the trade network page into something that updates itself: once an hour, a
 robot (GitHub Actions) checks Sleeper for new trades, prices every 2026+ player using
 your Parse.bot feed, and republishes the page. No Excel, no manual copying.
 
@@ -18,7 +18,7 @@ long only because it explains each step - the actual setup takes about 10 minute
 - `update_league.py` - the script that does the actual work (talks to Sleeper and
   Parse.bot, values new trades, rewrites `data.json`).
 - `requirements.txt` - the one Python package the script needs.
-- `.github/workflows/update.yml` - tells GitHub "run update_league.py every Tuesday."
+- `.github/workflows/update.yml` - tells GitHub "run update_league.py once an hour."
 
 ## Step 1 - Create the GitHub repository
 
@@ -73,9 +73,32 @@ network with the 2021-2025 data (since that's what `data.json` starts as).
 3. Click **Run workflow** -> **Run workflow** (button on the right).
 4. Wait ~30-60 seconds, then refresh - you should see a run with a green checkmark.
    Click into it if you want to see exactly what it did.
-5. If it's green, you're fully set up. It will now run automatically every Tuesday at
-   13:00 UTC, and you can always come back to this tab and click **Run workflow** to
-   force an update sooner (e.g., right after you make a trade).
+5. If it's green, you're fully set up. It will now run automatically once an hour,
+   and you can always come back to this tab and click **Run workflow** to force an
+   update immediately (e.g., right after you make a trade, instead of waiting for the
+   next hourly run).
+
+## Troubleshooting: a trade isn't showing up
+
+Work through these roughly in order:
+
+1. **Give it a run.** With the hourly schedule, a trade can take up to ~an hour to
+   appear on its own. To skip the wait, go to **Actions** -> **Update trade network
+   data** -> **Run workflow** right now.
+2. **Check the last run's status.** Still in the **Actions** tab, look at the most
+   recent run. A red X means the whole update failed - click into it to read the
+   error. By far the most common cause is a missing or expired `PARSE_API_KEY`
+   secret (Step 3 above); when that happens, `data.json` isn't touched at all, so
+   *every* trade since the last successful run is missing, not just one.
+3. **Check the trade itself, if the run is green but the trade still isn't there:**
+   - Sleeper marks each trade's `status` as `"complete"` only once any league-level
+     trade review/veto period you have configured has passed. If your league has one
+     turned on, a very recent trade can sit as `"pending"` until that window closes.
+   - Trades involving **3 or more teams** in a single Sleeper transaction aren't
+     picked up automatically (see the note above) - those need to be added by hand.
+   - A trade that's exclusively "1 player for FAAB dollars" on one side is excluded
+     on purpose (FAAB isn't tracked as an asset). A player-for-player trade is never
+     excluded by this rule.
 
 ## Embedding this in a Google Site (optional)
 
@@ -111,7 +134,8 @@ picks it up automatically. That's the entire yearly maintenance burden.
 - 2021-2022: CBS Sports single-QB redraft trade chart. 2023-2025: CBS's 2QB/superflex
   chart (the league went superflex in 2023). Both frozen forever in
   `frozen_history_2021_2025.json` - `update_league.py` never touches them.
-- 2026 onward: your Parse.bot feed (12-team, PPR, 2QB, redraft), refreshed weekly.
+- 2026 onward: your Parse.bot feed (12-team, PPR, 2QB, redraft), refreshed roughly
+  hourly as the update workflow runs.
 - Team defenses and any player never listed on a chart/feed get a small flat
   placeholder (2-3 on the normalized scale) instead of a real market value.
 - Trades that are exclusively "1 player for FAAB dollars" are excluded, same as the

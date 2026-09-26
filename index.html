@@ -310,8 +310,12 @@ let state = { mode: 'count', seasons: new Set() };
 
 function initFromData(){
   seasons = Array.from(new Set(DATA.trades.map(t=>t.s))).sort();
-  const nextSeason = seasons.length ? Math.max(...seasons) + 1 : new Date().getFullYear();
-  ALL_SEASONS_WITH_FUTURE = seasons.includes(nextSeason) ? seasons : seasons.concat([nextSeason]).sort();
+  // liveSeasons (written by update_league.py from LEAGUE_IDS) is the source of truth for
+  // "has this season actually started" - union it in so the current season still gets a tab
+  // even before its first trade, but a season Sleeper hasn't created a league for yet (e.g.
+  // 2027, before that one-time-per-year maintenance step) never shows up as a guessed tab.
+  const live = Array.isArray(DATA.liveSeasons) ? DATA.liveSeasons : [];
+  ALL_SEASONS_WITH_FUTURE = Array.from(new Set([...seasons, ...live])).sort((a, b) => a - b);
   state.seasons = new Set(ALL_SEASONS_WITH_FUTURE);
 }
 let lastTrades = [];
@@ -599,10 +603,12 @@ function renderFooterCount(){
   if(!all.length){ els.footerCountSentence.textContent = 'No completed trades yet.'; return; }
   const seasonsAll = Array.from(new Set(all.map(t=>t.s))).sort((a,b)=>a-b);
   const minS = seasonsAll[0], maxS = seasonsAll[seasonsAll.length-1];
-  const nextS = maxS + 1;
   const span = minS === maxS ? `${minS}` : `${minS}–${maxS}`;
+  // No "next season has none yet" guess here - that used to hardcode maxS+1 regardless of
+  // whether that season had even started on Sleeper (e.g. claiming "2027 has none yet" while
+  // 2026 was still ongoing). The season chips already show which seasons are live but empty.
   els.footerCountSentence.textContent =
-    `Built from ${all.length} completed trade${all.length!==1?'s':''}, ${span} (${nextS} has none yet).`;
+    `Built from ${all.length} completed trade${all.length!==1?'s':''}, ${span}.`;
 }
 
 function renderLegend(){

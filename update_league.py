@@ -31,7 +31,7 @@ league_id every year), add one line to LEAGUE_IDS below. That is the only manual
 step in this whole pipeline going forward.
 --------------------------------------------------------------------------------
 """
-import json, os, sys, time
+import csv, io, json, os, sys, time
 from pathlib import Path
 import requests
 
@@ -59,6 +59,12 @@ NORMALIZED_SCALE = 100.0
 
 SLEEPER_BASE = "https://api.sleeper.app/v1"
 session = requests.Session()
+
+# Regular-season finish + championship podium are borrowed from a sibling project
+# (namkurd/SleeperAuction) that already computes and maintains both, rather than
+# re-deriving this league's "Rumbles ranking" or bracket-to-podium logic here.
+SLEEPER_AUCTION_BASE = "https://raw.githubusercontent.com/namkurd/SleeperAuction/main"
+MANAGER_NAME_REMAP = {"Rohaan": "Haan"}  # SleeperAuction's display name -> this project's manager name
 
 # ---- manager identity: sleeper username -> real first name (confirmed with the owner) ----
 USERNAME_TO_FIRST = {
@@ -105,11 +111,68 @@ def load_players_cache():
     return players
 
 
-def abbrev_name(full_first, full_last):
-    """Matches the "F. Lastname" style already used throughout the historical dataset."""
-    if not full_first:
-        return full_last
-    return f"{full_first[0]}. {full_last}"
+def format_asset_name(player):
+    """"POS Full Name - TEAM" (e.g. "QB Justin Herbert - LAC"), one line, so the trade log
+    doesn't force anyone to remember who "J. Herbert" was. `player` is one entry from Sleeper's
+    /players/nfl payload - this works identically for a real player and for a team-defense
+    pseudo-player (Sleeper keys those by team code, e.g. "SF", with first_name/last_name being
+    the city/nickname and position "DEF"), so callers never need to special-case defenses.
+    Team is the CURRENT team Sleeper has on file, not necessarily the team at the time of a
+    historical trade - a deliberate simplification, since Sleeper's own player list is the only
+    "team per player" data source this pipeline has."""
+    pos = (player.get("position") or "").strip()
+    full = f"{(player.get('first_name') or '').strip()} {(player.get('last_name') or '').strip()}".strip()
+    label = f"{pos} {full}".strip() if pos else full
+    team = player.get("team")
+    return f"{label} - {team}" if team else label
+
+
+def fetch_standings_and_playoffs():
+    """Regular-season finish + championship/runner-up/third-place podium per season, fetched
+    fresh from the namkurd/SleeperAuction repo on every run so this pipeline never drifts out of
+    sync with that repo's own automated standings/podium computation.
+
+    Returns {season(str): {manager: {"r": rank, "n": team_count, "p": "c"/"s"/"t"}}}:
+      - "r"/"n" (regular-season finish) come from data/sleeper_standings.csv and only exist for
+        seasons that repo has actually computed (2021+, and only once that season's regular
+        season is over - the row for an in-progress season just doesn't exist yet).
+      - "p" (podium: champion/runner-up/3rd) comes from config/playoffs.json and covers
+        historical seasons back to 2013.
+    Never fatal - if SleeperAuction is unreachable this just returns less (or no) data, and the
+    front end's Fin. A/B column simply shows nothing for whatever's missing, same as it already
+    does for an in-progress season."""
+    result = {}
+    try:
+        r = session.get(f"{SLEEPER_AUCTION_BASE}/config/playoffs.json", timeout=30)
+        r.raise_for_status()
+        playoffs = r.json()
+    except requests.RequestException as e:
+        print(f"warning: couldn't fetch SleeperAuction playoffs.json ({e}) - skipping podium data")
+        playoffs = {}
+    for season, podium in playoffs.items():
+        if season.startswith("_") or not isinstance(podium, dict):
+            continue
+        for key, code in (("champion", "c"), ("second", "s"), ("third", "t")):
+            name = podium.get(key)
+            if not name:
+                continue
+            name = MANAGER_NAME_REMAP.get(name, name)
+            result.setdefault(season, {}).setdefault(name, {})["p"] = code
+
+    try:
+        r = session.get(f"{SLEEPER_AUCTION_BASE}/data/sleeper_standings.csv", timeout=30)
+        r.raise_for_status()
+        reader = csv.DictReader(io.StringIO(r.text))
+        for row in reader:
+            season = row["season"]
+            name = MANAGER_NAME_REMAP.get(row["manager"], row["manager"])
+            entry = result.setdefault(season, {}).setdefault(name, {})
+            entry["r"] = int(row["rank"])
+            entry["n"] = int(row["teams"])
+    except requests.RequestException as e:
+        print(f"warning: couldn't fetch SleeperAuction sleeper_standings.csv ({e}) - regular-season finish will be missing")
+
+    return result
 
 
 def get_league_chain_ids(season):
@@ -149,13 +212,12 @@ def fetch_trades_for_season(season, league_id, players_by_id, max_week=18):
                 for pid in pids:
                     if pid.isdigit():
                         p = players_by_id.get(pid)
-                        if p:
-                            name = abbrev_name(p.get("first_name"), p.get("last_name"))
-                        else:
-                            name = f"player#{pid}"
+                        name = format_asset_name(p) if p else f"player#{pid}"
                         out.append({"id": int(pid), "name": name, "is_def": False})
                     else:
-                        out.append({"id": pid, "name": pid, "is_def": True})  # team code, e.g. "SF"
+                        p = players_by_id.get(pid)  # team code, e.g. "SF" - Sleeper has a DEF entry for it too
+                        name = format_asset_name(p) if p else pid
+                        out.append({"id": pid, "name": name, "is_def": True})
                 return out
 
             a_gave = resolve_names(a_gave_ids)
@@ -489,9 +551,12 @@ def main():
     # the one-and-only source of truth for "has this season actually started", so the front end
     # never has to guess at a "next season" tab that doesn't exist yet (e.g. showing a 2027 tab
     # while 2027's league hasn't even been created on Sleeper).
-    result = {"managers": all_managers, "trades": deduped, "liveSeasons": sorted(LEAGUE_IDS.keys())}
+    standings = fetch_standings_and_playoffs()
+    result = {"managers": all_managers, "trades": deduped, "liveSeasons": sorted(LEAGUE_IDS.keys()),
+              "standings": standings}
     OUTPUT.write_text(json.dumps(result, separators=(",", ":")))
-    print(f"wrote {OUTPUT}: {len(deduped)} trades total ({len(new_compact)} from 2026+), {len(all_managers)} managers")
+    print(f"wrote {OUTPUT}: {len(deduped)} trades total ({len(new_compact)} from 2026+), "
+          f"{len(all_managers)} managers, standings for {len(standings)} seasons")
 
 
 if __name__ == "__main__":

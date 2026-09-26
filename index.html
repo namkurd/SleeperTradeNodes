@@ -19,6 +19,7 @@
     --font-display:'IBM Plex Sans Condensed',system-ui,sans-serif;
     --font-body:'IBM Plex Sans',system-ui,sans-serif;
     --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+    --gold:#9A7B0A; --silver:#75808C; --bronze:#9C6B3E;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
@@ -29,6 +30,7 @@
       --value:#B5810A; --value-soft:#332B18; --value-line:#D9A233;
       --node-fill:#1D2833; --node-stroke:#4B5867;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+      --gold:#E4C24C; --silver:#C7CFD8; --bronze:#D99C6B;
     }
   }
   :root[data-theme="dark"]{
@@ -39,6 +41,7 @@
     --value:#B5810A; --value-soft:#332B18; --value-line:#D9A233;
     --node-fill:#1D2833; --node-stroke:#4B5867;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    --gold:#E4C24C; --silver:#C7CFD8; --bronze:#D99C6B;
   }
 
   *{box-sizing:border-box;}
@@ -140,7 +143,8 @@
   details.log summary::after{content:'▾'; color:var(--text-3); transition:transform .15s;}
   details.log[open] summary::after{transform:rotate(180deg);}
   .log-table-wrap{overflow-x:auto; padding:0 14px 14px;}
-  table.log{border-collapse:collapse; width:100%; font-size:12px; min-width:640px;}
+  table.log{border-collapse:collapse; width:100%; font-size:11px; min-width:640px;}
+  #everyTradeTable{font-size:10.5px;}
   table.log th{
     text-align:left; font-family:var(--font-mono); font-weight:500; color:var(--text-3);
     font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; padding:6px 8px; border-bottom:1px solid var(--border);
@@ -164,10 +168,13 @@
   #tradeManagerFilterCount{font-family:var(--font-mono); font-weight:500; text-transform:none; color:var(--text-3); letter-spacing:0; margin-left:8px;}
   .val-tag, .season-tag{text-align:center;}
   table.log td.num, table.log th.num{text-align:center;}
-  #everyTradeTable td:nth-child(5), #everyTradeTable td:nth-child(6){min-width:150px;}
-  .asset-list{display:grid; grid-template-columns:1fr max-content; column-gap:10px; row-gap:3px; align-items:baseline;}
-  .asset-name{min-width:0; white-space:normal; word-break:break-word;}
-  .asset-value{font-family:var(--font-mono); font-variant-numeric:tabular-nums; color:var(--text-2); text-align:center; white-space:nowrap;}
+  .asset-list{display:flex; flex-direction:column; gap:3px;}
+  .asset-line{white-space:nowrap;}
+  .asset-value{font-family:var(--font-mono); font-variant-numeric:tabular-nums; color:var(--text-2); margin-left:5px;}
+  .finish-cell{font-family:var(--font-mono); font-weight:700; cursor:help;}
+  .finish-cell.finish-gold{color:var(--gold);}
+  .finish-cell.finish-silver{color:var(--silver);}
+  .finish-cell.finish-bronze{color:var(--bronze);}
   table.log tfoot td{font-weight:600; border-top:2px solid var(--border); border-bottom:none; font-family:var(--font-mono);}
   table.log th.sortable{cursor:pointer; user-select:none;}
   table.log th.sortable:hover{color:var(--text-2);}
@@ -259,16 +266,18 @@
           <thead><tr>
             <th class="sortable num" data-key="s"><span class="th-label">Season</span><span class="sort-arrow"></span></th>
             <th class="sortable num" data-key="w"><span class="th-label">Wk</span><span class="sort-arrow"></span></th>
-            <th class="sortable" data-key="a"><span class="th-label">Manager A</span><span class="sort-arrow"></span></th>
-            <th class="sortable" data-key="b"><span class="th-label">Manager B</span><span class="sort-arrow"></span></th>
+            <th class="sortable" data-key="a"><span class="th-label">Mgr. A</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="rankA"><span class="th-label">Fin. A</span><span class="sort-arrow"></span></th>
+            <th class="sortable" data-key="b"><span class="th-label">Mgr. B</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="rankB"><span class="th-label">Fin. B</span><span class="sort-arrow"></span></th>
             <th>A Gave</th><th>B Gave</th>
-            <th class="sortable num" data-key="va"><span class="th-label">A Gave Value</span><span class="sort-arrow"></span></th>
-            <th class="sortable num" data-key="vb"><span class="th-label">B Gave Value</span><span class="sort-arrow"></span></th>
-            <th class="sortable num" data-key="tv"><span class="th-label">Total Trade Value</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="va"><span class="th-label">A Value</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="vb"><span class="th-label">B Value</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="tv"><span class="th-label">Total</span><span class="sort-arrow"></span></th>
             <th class="sortable num" data-key="net"><span class="th-label">Net (A)</span><span class="sort-arrow"></span></th>
-            <th class="sortable num fp-col" data-key="fpa"><span class="th-label">Fantasy Pts (A)</span><span class="sort-arrow"></span></th>
-            <th class="sortable num fp-col" data-key="fpb"><span class="th-label">Fantasy Pts (B)</span><span class="sort-arrow"></span></th>
-            <th class="sortable num fp-col" data-key="fpNet"><span class="th-label">Fantasy Net (A)</span><span class="sort-arrow"></span></th>
+            <th class="sortable num fp-col" data-key="fpa"><span class="th-label">PTS A</span><span class="sort-arrow"></span></th>
+            <th class="sortable num fp-col" data-key="fpb"><span class="th-label">PTS B</span><span class="sort-arrow"></span></th>
+            <th class="sortable num fp-col" data-key="fpNet"><span class="th-label">Net PTS A</span><span class="sort-arrow"></span></th>
           </tr></thead>
           <tbody id="logBody"></tbody>
         </table>
@@ -503,11 +512,36 @@ let lastTradeById = {};
 
 function assetListHtml(list){
   if(!list || !list.length) return '<span style="color:var(--text-3)">&mdash;</span>';
-  return `<div class="asset-list">${list.map(x=>`<span class="asset-name">${x.n}</span><span class="asset-value">${fmtVal(x.v)}</span>`).join('')}</div>`;
+  return `<div class="asset-list">${list.map(x=>`<div class="asset-line">${x.n}<span class="asset-value">(${fmtVal(x.v)})</span></div>`).join('')}</div>`;
+}
+
+function ordinal(n){
+  const s = ['th','st','nd','rd'], v = n % 100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+function standingFor(season, manager){
+  const bySeason = DATA.standings && DATA.standings[season];
+  return bySeason ? bySeason[manager] : null;
+}
+
+function finishCellHtml(season, manager){
+  const st = standingFor(season, manager);
+  if(!st || !st.r) return '<span style="color:var(--text-3)">&mdash;</span>';
+  const ord = ordinal(st.r);
+  let cls = '', tip = `${ord} of ${st.n || '?'} &mdash; regular season`;
+  if(st.p === 'c'){ cls = 'finish-gold'; tip = 'Championship'; }
+  else if(st.p === 's'){ cls = 'finish-silver'; tip = 'Championship loss'; }
+  else if(st.p === 't'){ cls = 'finish-bronze'; tip = '3rd Place'; }
+  return `<span class="finish-cell ${cls}" data-tip="${tip}">${ord}</span>`;
 }
 
 function renderLog(trades){
-  const withNet = trades.map(t=> Object.assign({net: t.vb - t.va}, t));
+  const withNet = trades.map(t=> Object.assign({
+    net: t.vb - t.va,
+    rankA: (standingFor(t.s, t.a) || {}).r || Infinity,
+    rankB: (standingFor(t.s, t.b) || {}).r || Infinity,
+  }, t));
   const sorted = sortRows(withNet, logSort, (a,b)=> a.s-b.s || a.w-b.w);
   lastTradeById = {};
   sorted.forEach(t=> lastTradeById[t.id] = t);
@@ -519,7 +553,8 @@ function renderLog(trades){
     const fpNetStr = !hasFp ? '&mdash;' : (t.fpNet > 0 ? '+' : '') + fmtVal(t.fpNet);
     return `<tr data-tid="${t.id}">
       <td class="season-tag">${t.s}</td><td class="season-tag">${t.w}</td>
-      <td>${t.a}</td><td>${t.b}</td>
+      <td>${t.a}</td><td class="num">${finishCellHtml(t.s, t.a)}</td>
+      <td>${t.b}</td><td class="num">${finishCellHtml(t.s, t.b)}</td>
       <td>${assetListHtml(t.ag)}</td>
       <td>${assetListHtml(t.bg)}</td>
       <td class="val-tag">${fmtVal(t.va)}</td>
@@ -530,7 +565,7 @@ function renderLog(trades){
       <td class="val-tag fp-cell">${hasFp ? fmtVal(t.fpb) : '&mdash;'}</td>
       <td class="val-tag fp-cell ${fpNetClass}">${fpNetStr}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="13" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+  }).join('') || '<tr><td colspan="15" style="color:var(--text-3)">No trades in this filter.</td></tr>';
   updateSortIndicators('everyTradeTable', logSort);
 }
 
@@ -796,6 +831,8 @@ wireSortableHeaders('everyTradeTable', logSort, ()=> renderLog(lastLogTrades));
 wireSortableHeaders('ownerTotalsTable', ownerSort, ()=> renderOwnerTotals(lastTrades));
 
 els.logBody.addEventListener('mousemove', (ev)=>{
+  const fin = ev.target.closest('.finish-cell');
+  if(fin){ showTip(ev, fin.dataset.tip); return; }
   const cell = ev.target.closest('.fp-cell');
   if(!cell){ hideTip(); return; }
   const row = cell.closest('tr[data-tid]');
@@ -804,6 +841,13 @@ els.logBody.addEventListener('mousemove', (ev)=>{
   showTip(ev, tipForFantasyTrade(t));
 });
 els.logBody.addEventListener('mouseleave', hideTip);
+// tap-to-show on mobile (mousemove doesn't fire on touch): tapping a finish cell shows its
+// tooltip pinned at the tap point; tapping anywhere else dismisses it.
+els.logBody.addEventListener('click', (ev)=>{
+  const fin = ev.target.closest('.finish-cell');
+  if(fin){ showTip(ev, fin.dataset.tip); ev.stopPropagation(); }
+});
+document.addEventListener('click', hideTip);
 
 fetch('data.json?_=' + Date.now())
   .then(r => r.json())

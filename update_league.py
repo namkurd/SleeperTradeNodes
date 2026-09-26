@@ -228,11 +228,44 @@ def find_departure_type(drops_index, wk_departed_after, roster_id, pid):
     return "traded" if candidates[-1][1] == "trade" else "dropped"
 
 
+def fetch_nfl_state():
+    """Sleeper's own idea of "what week is it" (GET /state/nfl -> {"season": "2026", "week": 4,
+    "season_type": "regular", ...}). Used only to sanity-check the playoff bracket below - not
+    cached, since it changes weekly and the call is a single tiny request."""
+    try:
+        return sleeper_get("/state/nfl")
+    except requests.HTTPError:
+        return None
+
+
+def is_regular_season_over(nfl_state, season, reg_end):
+    """Whether `season`'s regular season has actually finished, per Sleeper's own current-week
+    state - NOT per whether winners_bracket happens to return something. Sleeper can populate a
+    bracket skeleton (seeded placeholder games, bye slots, etc.) before the regular season is
+    really done, and trusting that directly caused real trades to get their fantasy-points
+    tracking cut off at week 14 while the season was still just getting started (see the
+    fetch_winners_bracket docstring). Guarding on the calendar first closes that dead end:
+    winners_bracket is only ever consulted once we independently know the regular season is over."""
+    if not nfl_state or not nfl_state.get("season"):
+        return True  # can't tell - fall back to trusting winners_bracket's own emptiness check
+    try:
+        state_season = int(nfl_state["season"])
+    except (TypeError, ValueError):
+        return True
+    if state_season > season:
+        return True   # a later season is already underway - this one's regular season is long done
+    if state_season < season:
+        return False  # this season hasn't started yet (shouldn't happen for anything in LEAGUE_IDS)
+    state_week = nfl_state.get("week")
+    return bool(state_week and state_week > reg_end)
+
+
 def fetch_winners_bracket(league_id):
     """The set of roster_ids that made the playoffs, once Sleeper generates the bracket (after
     the regular season ends). Returns None if the bracket doesn't exist yet - deliberately not
     cached in that case, mirroring fetch_matchup_week, so a later scheduled run picks it up
-    the moment the playoffs are set."""
+    the moment the playoffs are set. Callers must gate this behind is_regular_season_over() -
+    see that function's docstring for why."""
     cache_path = CACHE_DIR / f"winners_bracket_{league_id}.json"
     if cache_path.exists():
         data = json.loads(cache_path.read_text())
@@ -361,13 +394,17 @@ def value_2026_plus(season, week, asset, season_max_tracker):
 
 def build_2026_plus_trades():
     players_by_id = load_players_cache()
+    nfl_state = fetch_nfl_state()
     season_max_tracker = {}
     all_trades = []
     for season, league_id in sorted(LEAGUE_IDS.items()):
         raw_trades = fetch_trades_for_season(season, league_id, players_by_id)
         if not raw_trades:
             continue
-        bracket = fetch_winners_bracket(league_id)  # None until Sleeper generates the playoffs
+        reg_end = reg_season_end_week(season)
+        # Only even ask about the bracket once we independently know the regular season is
+        # over - see is_regular_season_over's docstring for the bug this avoids.
+        bracket = fetch_winners_bracket(league_id) if is_regular_season_over(nfl_state, season, reg_end) else None
         drops_index = build_drops_index(league_id)
         for t in raw_trades:
             start_week = t["week"] + 1
@@ -448,7 +485,11 @@ def main():
         seen.add(t["id"])
         deduped.append(t)
 
-    result = {"managers": all_managers, "trades": deduped}
+    # liveSeasons: the seasons we actually have a Sleeper league_id for (see LEAGUE_IDS above) -
+    # the one-and-only source of truth for "has this season actually started", so the front end
+    # never has to guess at a "next season" tab that doesn't exist yet (e.g. showing a 2027 tab
+    # while 2027's league hasn't even been created on Sleeper).
+    result = {"managers": all_managers, "trades": deduped, "liveSeasons": sorted(LEAGUE_IDS.keys())}
     OUTPUT.write_text(json.dumps(result, separators=(",", ":")))
     print(f"wrote {OUTPUT}: {len(deduped)} trades total ({len(new_compact)} from 2026+), {len(all_managers)} managers")
 

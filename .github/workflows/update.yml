@@ -1,1 +1,50 @@
+name: Update trade network data
 
+on:
+  schedule:
+    # Once an hour, on the hour, every day. Cron is UTC, but since this just controls how
+    # often we poll Sleeper for new trades (not a specific game-time cutoff), the timezone
+    # doesn't matter - "hourly" is hourly everywhere. Note: GitHub only guarantees this
+    # *approximately* hourly (scheduled runs can slip a few minutes during high load), and
+    # GitHub disables scheduled workflows automatically after 60 days with no repo commits -
+    # if updates seem to have stopped entirely, check the Actions tab for a banner about that
+    # and click "Enable workflow" to turn it back on.
+    - cron: "0 * * * *"
+  workflow_dispatch: {}   # lets you click "Run workflow" in the Actions tab any time to force an update right now
+
+permissions:
+  contents: write   # so the workflow can commit the refreshed data.json back to the repo
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Restore Parse.bot weekly-snapshot cache
+        uses: actions/cache@v4
+        with:
+          path: cache
+          key: parsebot-cache-${{ github.run_id }}
+          restore-keys: |
+            parsebot-cache-
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch new trades and rebuild data.json
+        env:
+          PARSE_API_KEY: ${{ secrets.PARSE_API_KEY }}
+        run: python update_league.py
+
+      - name: Commit updated data.json if it changed
+        run: |
+          git config user.name "trade-network-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data.json
+          git diff --cached --quiet && echo "No changes to data.json" || git commit -m "Update trade network data"
+          git push

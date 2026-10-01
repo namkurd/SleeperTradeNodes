@@ -139,14 +139,24 @@
   details.log summary{
     cursor:pointer; font-family:var(--font-display); font-weight:700; font-size:13px;
     letter-spacing:.3px; text-transform:uppercase; color:var(--text-2); padding:14px;
-    list-style:none; display:flex; align-items:center; justify-content:space-between;
+    list-style:none; display:flex; align-items:center; justify-content:flex-start; gap:8px;
   }
+  /* A single element so flexbox (and the ::after arrow beside it) can't scatter the
+     "Full trade log (" / count / "trades)" pieces across the whole panel width - the
+     old rule had three separate flex items here, stretched apart by justify-content. */
+  .log-summary-label{white-space:nowrap;}
   details.log summary::-webkit-details-marker{display:none;}
   details.log summary::after{content:'▾'; color:var(--text-3); transition:transform .15s;}
   details.log[open] summary::after{transform:rotate(180deg);}
   .log-table-wrap{overflow-x:auto; padding:0 14px 14px;}
   table.log{border-collapse:collapse; table-layout:fixed; width:auto; font-size:11px;}
-  #everyTradeTable{font-size:10.5px;}
+  /* The every-trade table gets its own width rule: a fixed/percentage-split 100%
+     table so it always exactly fills its wrap div instead of overflowing it - no
+     column of this many (15) can be given generous fixed pixel widths without
+     forcing a horizontal scrollbar on anything narrower than a very wide desktop. */
+  #everyTradeTable{font-size:10.5px; width:100%;}
+  #everyTradeTable th .th-label{white-space:normal;}
+  #everyTradeTable th, #everyTradeTable td{padding:6px 6px;}
   table.log th{
     text-align:left; font-family:var(--font-mono); font-weight:500; color:var(--text-3);
     font-size:10.5px; text-transform:uppercase; letter-spacing:.3px; padding:6px 10px; border-bottom:1px solid var(--border);
@@ -173,7 +183,10 @@
   table.log td.num, table.log th.num{text-align:center;}
   table.log th.num-right, table.log td.num-right{text-align:right;}
   .asset-list{display:flex; flex-direction:column; gap:3px;}
-  .asset-line{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  /* Wrap instead of truncate: at the narrower percentage-based widths this column
+     now gets (see #everyTradeTable), an ellipsis would silently hide part of a
+     player's name with no way to recover it - wrapping keeps it all visible. */
+  .asset-line{white-space:normal; overflow-wrap:break-word;}
   .asset-value{font-family:var(--font-mono); font-variant-numeric:tabular-nums; color:var(--text-2); margin-left:5px;}
   .finish-cell{font-family:var(--font-mono); font-weight:700; cursor:help;}
   .finish-cell.finish-gold{color:var(--gold);}
@@ -248,7 +261,7 @@
 
   <div class="panel">
     <details class="log">
-      <summary>Full trade log (<span id="logCount">0</span> trades)</summary>
+      <summary><span class="log-summary-label">Full trade log (<span id="logCount">0</span> trades)</span></summary>
       <div class="log-table-wrap">
         <h3 class="log-subhead">Value by owner<span id="ownerTotalsScope"></span></h3>
         <table class="log owner-totals" id="ownerTotalsTable">
@@ -272,10 +285,10 @@
         <h3 class="log-subhead">Every trade<select id="tradeManagerFilter" class="mgr-filter"><option value="">All managers</option></select><span id="tradeManagerFilterCount"></span></h3>
         <table class="log" id="everyTradeTable">
           <colgroup>
-            <col style="width:58px"><col style="width:40px"><col style="width:68px"><col style="width:56px">
-            <col style="width:68px"><col style="width:56px"><col style="width:262px"><col style="width:262px">
-            <col style="width:66px"><col style="width:66px"><col style="width:60px"><col style="width:70px">
-            <col style="width:58px"><col style="width:58px"><col style="width:76px">
+            <col style="width:4.38%"><col style="width:3.02%"><col style="width:5.14%"><col style="width:4.23%">
+            <col style="width:5.14%"><col style="width:4.23%"><col style="width:19.79%"><col style="width:19.79%">
+            <col style="width:4.98%"><col style="width:4.98%"><col style="width:4.53%"><col style="width:5.29%">
+            <col style="width:4.38%"><col style="width:4.38%"><col style="width:5.74%">
           </colgroup>
           <thead><tr>
             <th class="sortable num num-right" data-key="s"><span class="th-label">Season</span><span class="sort-arrow"></span></th>
@@ -300,7 +313,7 @@
   </div>
 
   <footer id="footerText">
-    <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value. Trades where one side gave nothing (a player-for-FAAB trade, since FAAB isn't captured as an asset) are excluded entirely. The Fantasy Pts columns are a separate, real measurement from actual games: for each traded player, points earned in the acquiring manager's starting lineup, starting the week after the trade and stopping the moment that manager trades or drops them again; benched weeks score 0 and don't end the count, but leaving the roster does. If the acquiring manager's team missed the playoffs that season, counting also stops at the end of the regular season (week 15 for 2021&ndash;2025, week 14 starting 2026) even if they kept the player &mdash; points scored once a non-playoff team'l season is over don't count. Hover a Fantasy Pts cell for the per-player breakdown, including how much of each player's total came in the regular season versus the playoffs, and whether a stopped clock was caused by a trade, a drop, or a missed playoff berth. Hover a node in the graph above for that owner's trade partner count, net trade value, and net fantasy points gained under the current filter.
+    <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value. Trades where one side gave nothing (a player-for-FAAB trade, since FAAB isn't captured as an asset) are excluded entirely. The Fantasy Pts columns are a separate, real measurement from actual games: for each traded player, points earned in the acquiring manager's starting lineup, starting the week after the trade and stopping the moment that manager trades or drops them again; benched weeks score 0 and don't end the count, but leaving the roster does. If the acquiring manager's team missed the playoffs that season, counting also stops at the end of the regular season (week 15 for 2021&ndash;2025, week 14 starting 2026) even if they kept the player &mdash; points scored once a non-playoff team's season is over don't count. Hover a Fantasy Pts cell for the per-player breakdown, including how much of each player's total came in the regular season versus the playoffs, and whether a stopped clock was caused by a trade, a drop, or a missed playoff berth. Hover a node in the graph above for that owner's trade partner count, net trade value, and net fantasy points gained under the current filter.
   </footer>
 </div>
 
@@ -738,8 +751,8 @@ function renderGraph(activeManagers, pairs, degree, trades){
     .attr('stroke','transparent')
     .attr('stroke-width', d=>Math.max(16, widthScale(metricOf(d.pair))+12))
     .style('pointer-events','stroke')
-    .on('mousemove', (ev,d)=> showTipFixed(tipForPair(d.pair)))
-    .on('mouseleave', hideTip);
+    .on('mousemove', (ev,d)=> { showTipFixed(tipForPair(d.pair)); highlightLink(d.pair); })
+    .on('mouseleave', ()=> { hideTip(); highlightLink(null); });
 
   // Every link is composed of two colored strands, one per owner in the trade,
   // meeting with a small gap at the midpoint - so a link's color always ties
@@ -790,6 +803,19 @@ function renderGraph(activeManagers, pairs, degree, trades){
     });
     nodeG.select('circle').attr('opacity', d=> id===null ? 1 : (isConnected(id,d) ? 1 : 0.35));
     nodeG.select('text').attr('opacity', d=> id===null ? 1 : (isConnected(id,d) ? 1 : 0.2));
+  }
+  // Link-hover variant: fades everything except this one connection and its two
+  // endpoint owners, rather than every link touching either owner (that's what
+  // highlight(id) above does for a node hover).
+  function highlightLink(pair){
+    linkG.selectAll('.link-seg').attr('stroke-opacity', d=>{
+      const base = opacityScale(metricOf(d.pair));
+      if(pair===null) return base;
+      return d.pair===pair ? Math.min(1, base+0.25) : base*0.15;
+    });
+    const touches = d=> pair!==null && (d.id===pair.a || d.id===pair.b);
+    nodeG.select('circle').attr('opacity', d=> pair===null ? 1 : (touches(d) ? 1 : 0.35));
+    nodeG.select('text').attr('opacity', d=> pair===null ? 1 : (touches(d) ? 1 : 0.2));
   }
 
   if(sim) sim.stop();

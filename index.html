@@ -135,6 +135,13 @@
   .pair-bar{height:3px; border-radius:2px; margin-top:4px; background:var(--surface-2); overflow:hidden;}
   .pair-bar > i{display:block; height:100%; background:var(--count-line);}
   .mode-value .pair-bar > i{background:var(--value-line);}
+  /* Fixed to the height that used to hold exactly 8 rows, so the panel's footprint never
+     grows - the rest of the pairs (there can be 30+) scroll inside that same box instead. */
+  #rankList{max-height:308px; overflow-y:auto; overflow-x:hidden; padding-right:6px; margin-right:-6px;}
+  #rankList::-webkit-scrollbar{width:6px;}
+  #rankList::-webkit-scrollbar-track{background:transparent;}
+  #rankList::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+  #rankList{scrollbar-width:thin; scrollbar-color:var(--border) transparent;}
 
   details.log summary{
     cursor:pointer; font-family:var(--font-display); font-weight:700; font-size:13px;
@@ -216,6 +223,7 @@
   .tooltip .tt-list{margin-top:6px; padding-top:6px; border-top:1px solid color-mix(in srgb, var(--bg) 25%, transparent);}
   .tooltip .tt-trade{margin-bottom:4px;}
   .tooltip .tt-trade i{font-style:normal; opacity:.85;}
+  .tooltip .tt-side{margin-top:2px; font-weight:500;}
   .tooltip .tt-more{opacity:.65; font-size:11px;}
 
   svg text{font-family:var(--font-body); fill:var(--text);}
@@ -503,6 +511,15 @@ function managerColorScale(){
   const palette = isDarkTheme() ? MANAGER_COLORS_DARK : MANAGER_COLORS_LIGHT;
   return d3.scaleOrdinal().domain(DATA.managers.slice().sort((a,b)=>a.localeCompare(b))).range(palette);
 }
+// The tooltip chip is always the *inverse* of the page (background:var(--text)), so the
+// palette variant picked for legible node fills is the wrong one for tooltip text - e.g. in
+// dark mode the bright MANAGER_COLORS_DARK read fine on the dark graph but wash out against
+// the tooltip's light chip. Swap to the companion palette: same hue per manager, the member
+// actually tuned for contrast on that inverted surface.
+function tooltipColorScale(){
+  const palette = isDarkTheme() ? MANAGER_COLORS_LIGHT : MANAGER_COLORS_DARK;
+  return d3.scaleOrdinal().domain(DATA.managers.slice().sort((a,b)=>a.localeCompare(b))).range(palette);
+}
 
 let sim = null;
 function render(){
@@ -541,7 +558,9 @@ function renderStats(trades, pairs){
 
 function renderRank(pairs){
   els.rankTitle.textContent = state.mode==='count' ? 'Most frequent pairs' : 'Most value exchanged';
-  const sorted = pairs.slice().sort((x,y)=> (state.mode==='count'? y.count-x.count : y.value-x.value)).slice(0,8);
+  // Every pair, not just the top 8 - #rankList scrolls internally (see CSS) so the
+  // panel itself stays the same size no matter how many trade partners exist.
+  const sorted = pairs.slice().sort((x,y)=> (state.mode==='count'? y.count-x.count : y.value-x.value));
   const max = sorted.length ? (state.mode==='count'? sorted[0].count : sorted[0].value) : 1;
   els.rankList.className = state.mode==='value' ? 'mode-value' : '';
   els.rankList.innerHTML = sorted.map(p=>{
@@ -857,10 +876,14 @@ function namesWithValues(list){
 }
 function tipForPair(p){
   const MAX_SHOWN = 6;
+  const tc = tooltipColorScale();
   const sorted = p.trades.slice().sort((a,b)=> a.s-b.s || a.w-b.w);
   const shown = sorted.slice(0, MAX_SHOWN);
   const lines = shown.map(t=>
-    `<div class="tt-trade"><b>${t.s}</b> wk${t.w} &mdash; <b>${fmtVal(t.tv)}</b> value pts total<br>${t.a}: ${namesWithValues(t.ag)} &harr; ${t.b}: ${namesWithValues(t.bg)}</div>`
+    `<div class="tt-trade"><b>${t.s}</b> wk${t.w} &mdash; <b>${fmtVal(t.tv)}</b> value pts total
+      <div class="tt-side" style="color:${tc(t.a)}">${t.a}: ${namesWithValues(t.ag)}</div>
+      <div class="tt-side" style="color:${tc(t.b)}">${t.b}: ${namesWithValues(t.bg)}</div>
+    </div>`
   ).join('');
   const more = sorted.length > MAX_SHOWN ? `<div class="tt-more">+${sorted.length-MAX_SHOWN} more &mdash; see full log below</div>` : '';
   return `<div class="tt-title">${p.a} &harr; ${p.b}</div>

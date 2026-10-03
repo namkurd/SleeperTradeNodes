@@ -364,7 +364,7 @@ function initFromData(){
 }
 let lastTrades = [];
 let lastLogTrades = [];
-let logSort = {key: null, dir: 1};
+let logSort = {key: 's', dir: -1}; // default: most recent season on top, highest week within it on top
 let ownerSort = {key: null, dir: 1};
 let tradeManagerFilter = '';
 let managerFilterOptionsBuilt = false;
@@ -608,7 +608,17 @@ function renderLog(trades){
     rankA: (standingFor(t.s, t.a) || {}).r || Infinity,
     rankB: (standingFor(t.s, t.b) || {}).r || Infinity,
   }, t));
-  const sorted = sortRows(withNet, logSort, (a,b)=> a.s-b.s || a.w-b.w);
+  // Season and week are linked: sorting by one should break ties on the other in the
+  // *same* direction, not always ascending - e.g. "most recent season on top" should also
+  // put the highest week on top within each season, and "highest week on top" should put
+  // the most recent season on top within each week. Sorting by any other column keeps the
+  // old chronological (ascending season, then ascending week) tie-break.
+  const logFallbackCmp = (a,b)=>{
+    if(logSort.key === 's') return (a.w - b.w) * logSort.dir;
+    if(logSort.key === 'w') return (a.s - b.s) * logSort.dir;
+    return a.s-b.s || a.w-b.w;
+  };
+  const sorted = sortRows(withNet, logSort, logFallbackCmp);
   lastTradeById = {};
   sorted.forEach(t=> lastTradeById[t.id] = t);
   els.logBody.innerHTML = sorted.map(t=>{

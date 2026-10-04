@@ -204,7 +204,7 @@
   table.log th.sortable:hover{color:var(--text-2);}
   table.log th.sortable.sort-active{color:var(--text);}
   table.log th .sort-arrow{display:inline-block; min-width:9px; margin-left:3px; font-size:9px;}
-  td.fp-cell{cursor:help; border-bottom-style:dashed;}
+  td.fp-cell, td.net-cell{cursor:help; border-bottom-style:dashed;}
   th.fp-col .th-label{border-bottom:1px dashed var(--text-3);}
   .net-pos{color:var(--value);}
   .net-neg{color:var(--text-3);}
@@ -364,6 +364,7 @@ function initFromData(){
 }
 let lastTrades = [];
 let lastLogTrades = [];
+let lastOwnerTotals = null; // Map name -> totals (incl. byTrade breakdown), set by renderOwnerTotals
 let logSort = {key: 's', dir: -1}; // default: most recent season on top, highest week within it on top
 let ownerSort = {key: null, dir: 1};
 let tradeManagerFilter = '';
@@ -650,15 +651,22 @@ function computeOwnerTotals(trades){
   // source of truth for "net" numbers, shared by the owner-totals table and the graph's
   // node coloring so the two views never disagree.
   const totals = new Map();
-  DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0, fpGiven:0, fpReceived:0}));
+  DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0, fpGiven:0, fpReceived:0, byTrade:[]}));
   trades.forEach(t=>{
     const a = totals.get(t.a), b = totals.get(t.b);
     a.trades += 1; a.given += t.va; a.received += t.vb;
     b.trades += 1; b.given += t.vb; b.received += t.va;
-    if(t.fpa != null && t.fpb != null){
+    const hasFp = t.fpa != null && t.fpb != null;
+    if(hasFp){
       a.fpGiven += t.fpb; a.fpReceived += t.fpa;
       b.fpGiven += t.fpa; b.fpReceived += t.fpb;
     }
+    // Per-trade contribution toward each side's Net / Fantasy Pts Gained totals, kept so
+    // the owner-totals table can show "which trades make up this number" on hover - from
+    // t.a's perspective a trade nets (vb-va) in value and (fpa-fpb) in fantasy points; from
+    // t.b's perspective it's the mirror image.
+    a.byTrade.push({s:t.s, w:t.w, other:t.b, valueNet: t.vb - t.va, fpNet: hasFp ? (t.fpa - t.fpb) : null});
+    b.byTrade.push({s:t.s, w:t.w, other:t.a, valueNet: t.va - t.vb, fpNet: hasFp ? (t.fpb - t.fpa) : null});
   });
   totals.forEach(v=>{ v.net = v.received - v.given; v.fpNet = v.fpReceived - v.fpGiven; });
   return totals;
@@ -670,6 +678,7 @@ function renderOwnerTotals(trades){
     : ' — all seasons';
 
   const totals = computeOwnerTotals(trades);
+  lastOwnerTotals = totals; // so the Net / Fantasy Pts Gained hover tooltips can look up each owner's per-trade breakdown
   let rows = Array.from(totals.entries())
     .filter(([,v])=> v.trades > 0)
     .map(([name,v])=>({name, ...v}));
@@ -680,12 +689,12 @@ function renderOwnerTotals(trades){
     const netStr = (r.net > 0 ? '+' : '') + fmtVal(r.net);
     const fpNetClass = r.fpNet > 0 ? 'net-pos' : (r.fpNet < 0 ? 'net-neg' : '');
     const fpNetStr = (r.fpNet > 0 ? '+' : '') + fmtVal(r.fpNet);
-    return `<tr>
+    return `<tr data-owner="${r.name}">
       <td>${r.name}</td>
       <td class="num-right val-tag">${r.trades}</td>
       <td class="num-right val-tag">${fmtVal(r.given)}</td>
       <td class="num-right val-tag">${fmtVal(r.received)}</td>
-      <td class="num-right val-tag ${netClass}">${netStr}</td>
+      <td class="num-right val-tag net-cell ${netClass}">${netStr}</td>
       <td class="num-right val-tag fp-cell ${fpNetClass}">${fpNetStr}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="6" style="color:var(--text-3)">No trades in this filter.</td></tr>';
@@ -938,6 +947,29 @@ function tipForFantasyTrade(t){
     </div>
     <div class="tt-more">points scored starting the week after the trade, only while started for the acquiring team; benched or off-roster weeks don't count</div>`;
 }
+function tipForOwnerBreakdown(name, byTrade, kind){
+  // kind: 'value' -> Net column breakdown, 'fp' -> Fantasy Pts Gained column breakdown.
+  // Lists every trade that contributes to this total, most-recent-first (season desc, then
+  // week desc, matching the rest of the UI). For 'fp', a trade with no fantasy-outcome data
+  // contributes 0 to the total and is called out separately rather than listed as a 0.
+  const isFp = kind === 'fp';
+  const all = byTrade.slice().sort((a,b)=> b.s - a.s || b.w - a.w);
+  const shown = isFp ? all.filter(e=> e.fpNet !== null) : all;
+  const missing = isFp ? all.length - shown.length : 0;
+  const label = isFp ? 'Fantasy pts gained' : 'Net trade value';
+  if(!shown.length){
+    return `<div class="tt-title">${name} &mdash; ${label}</div>No fantasy-outcome data for these trades.`;
+  }
+  const lines = shown.map(e=>{
+    const val = isFp ? e.fpNet : e.valueNet;
+    const cls = val > 0 ? 'net-pos' : (val < 0 ? 'net-neg' : '');
+    const str = (val > 0 ? '+' : '') + fmtVal(val);
+    return `<div class="tt-trade">${e.s} wk${e.w} &mdash; ${e.other}: <b class="${cls}">${str}</b></div>`;
+  }).join('');
+  const more = missing ? `<div class="tt-more">${missing} trade${missing!==1?'s':''} excluded &mdash; no fantasy data</div>` : '';
+  return `<div class="tt-title">${name} &mdash; ${label} by trade</div>
+    <div class="tt-list">${lines}${more}</div>`;
+}
 function showTip(ev, html){
   els.tooltip.innerHTML = html;
   els.tooltip.style.opacity = 1;
@@ -989,6 +1021,28 @@ els.logBody.addEventListener('click', (ev)=>{
   if(fin){ showTip(ev, fin.dataset.tip); ev.stopPropagation(); }
 });
 document.addEventListener('click', hideTip);
+
+els.ownerTotalsBody.addEventListener('mousemove', (ev)=>{
+  const cell = ev.target.closest('.net-cell, .fp-cell');
+  if(!cell){ hideTip(); return; }
+  const row = cell.closest('tr[data-owner]');
+  const totals = row && lastOwnerTotals && lastOwnerTotals.get(row.dataset.owner);
+  if(!totals){ hideTip(); return; }
+  const kind = cell.classList.contains('fp-cell') ? 'fp' : 'value';
+  showTip(ev, tipForOwnerBreakdown(row.dataset.owner, totals.byTrade, kind));
+});
+els.ownerTotalsBody.addEventListener('mouseleave', hideTip);
+// tap-to-show on mobile (mousemove doesn't fire on touch), mirroring the finish-cell pattern above.
+els.ownerTotalsBody.addEventListener('click', (ev)=>{
+  const cell = ev.target.closest('.net-cell, .fp-cell');
+  if(!cell) return;
+  const row = cell.closest('tr[data-owner]');
+  const totals = row && lastOwnerTotals && lastOwnerTotals.get(row.dataset.owner);
+  if(!totals) return;
+  const kind = cell.classList.contains('fp-cell') ? 'fp' : 'value';
+  showTip(ev, tipForOwnerBreakdown(row.dataset.owner, totals.byTrade, kind));
+  ev.stopPropagation();
+});
 
 fetch('data.json?_=' + Date.now())
   .then(r => r.json())

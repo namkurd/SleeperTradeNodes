@@ -365,6 +365,9 @@ function initFromData(){
 let lastTrades = [];
 let lastLogTrades = [];
 let lastOwnerTotals = null; // Map name -> totals (incl. byTrade breakdown), set by renderOwnerTotals
+let graphHighlightFns = null; // {highlight, highlightLink} from the current render(), so a tap
+                               // elsewhere on the page can clear graph highlighting on mobile
+                               // (where there's no real mouseleave to do it automatically)
 let logSort = {key: 's', dir: -1}; // default: most recent season on top, highest week within it on top
 let ownerSort = {key: null, dir: 1};
 let tradeManagerFilter = '';
@@ -790,7 +793,14 @@ function renderGraph(activeManagers, pairs, degree, trades){
     .attr('stroke-width', d=>Math.max(16, widthScale(metricOf(d.pair))+12))
     .style('pointer-events','stroke')
     .on('mousemove', (ev,d)=> { showTipFixed(tipForPair(d.pair)); highlightLink(d.pair); })
-    .on('mouseleave', ()=> { hideTip(); highlightLink(null); });
+    .on('mouseleave', ()=> { hideTip(); highlightLink(null); })
+    // Tap-to-show on mobile: touch devices fire a synthetic mouseenter/mousemove on tap (which
+    // is why the tooltip appeared at all) but then immediately fire mouseleave with no real
+    // hover state behind it, so the mousemove handler above's tooltip was shown and torn down
+    // in the same tap. An explicit click handler re-shows it and stopPropagation keeps the
+    // document-level dismiss listener (below) from immediately closing it again; tapping
+    // anywhere else still dismisses it via that listener.
+    .on('click', (ev,d)=> { showTipFixed(tipForPair(d.pair)); highlightLink(d.pair); ev.stopPropagation(); });
 
   // Every link is composed of two colored strands, one per owner in the trade,
   // meeting with a small gap at the midpoint - so a link's color always ties
@@ -822,7 +832,9 @@ function renderGraph(activeManagers, pairs, degree, trades){
     .attr('stroke-width', 1.4)
     .on('mouseenter', (ev,d)=> { showTipFixed(tipForNode(d)); highlight(d.id); })
     .on('mouseleave', hideTip)
-    .on('mouseout', ()=> highlight(null));
+    .on('mouseout', ()=> highlight(null))
+    // Tap-to-show on mobile - see the matching comment on the link-hit line above.
+    .on('click', (ev,d)=> { showTipFixed(tipForNode(d)); highlight(d.id); ev.stopPropagation(); });
 
   nodeG.append('text')
     .attr('class','node-label')
@@ -855,6 +867,7 @@ function renderGraph(activeManagers, pairs, degree, trades){
     nodeG.select('circle').attr('opacity', d=> pair===null ? 1 : (touches(d) ? 1 : 0.35));
     nodeG.select('text').attr('opacity', d=> pair===null ? 1 : (touches(d) ? 1 : 0.2));
   }
+  graphHighlightFns = {highlight, highlightLink};
 
   if(sim) sim.stop();
   sim = d3.forceSimulation(nodes)
@@ -1020,7 +1033,10 @@ els.logBody.addEventListener('click', (ev)=>{
   const fin = ev.target.closest('.finish-cell');
   if(fin){ showTip(ev, fin.dataset.tip); ev.stopPropagation(); }
 });
-document.addEventListener('click', hideTip);
+document.addEventListener('click', ()=>{
+  hideTip();
+  if(graphHighlightFns){ graphHighlightFns.highlight(null); graphHighlightFns.highlightLink(null); }
+});
 
 els.ownerTotalsBody.addEventListener('mousemove', (ev)=>{
   const cell = ev.target.closest('.net-cell, .fp-cell');

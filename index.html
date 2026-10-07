@@ -230,6 +230,7 @@
   .tooltip .tt-trade i{font-style:normal; opacity:.85;}
   .tooltip .tt-side{margin-top:2px; font-weight:500;}
   .tooltip .tt-more{opacity:.65; font-size:11px;}
+  .tooltip .tt-pl{font-size:11px; opacity:.85; margin:1px 0 0 10px;}
   .tooltip .tt-p{white-space:nowrap;} /* a player's name+number never splits across lines */
   .tooltip .tt-net{margin-top:3px; font-size:11px; opacity:.95;}
   .tooltip .tt-net .k{opacity:.65; margin-right:2px;}
@@ -730,8 +731,8 @@ function computeOwnerTotals(trades){
     // the owner-totals table can show "which trades make up this number" on hover - from
     // t.a's perspective a trade nets (vb-va) in value and (fpa-fpb) in fantasy points; from
     // t.b's perspective it's the mirror image.
-    const ea = {s:t.s, w:t.w, other:t.b, valueNet: t.vb - t.va, fpNet: hasFp ? (t.fpa - t.fpb) : null};
-    const eb = {s:t.s, w:t.w, other:t.a, valueNet: t.va - t.vb, fpNet: hasFp ? (t.fpb - t.fpa) : null};
+    const ea = {s:t.s, w:t.w, other:t.b, valueNet: t.vb - t.va, fpNet: hasFp ? (t.fpa - t.fpb) : null, got:t.bg, gave:t.ag};
+    const eb = {s:t.s, w:t.w, other:t.a, valueNet: t.va - t.vb, fpNet: hasFp ? (t.fpb - t.fpa) : null, got:t.ag, gave:t.bg};
     a.byTrade.push(ea); b.byTrade.push(eb);
     [[a, ea], [b, eb]].forEach(([m, e])=>{
       const k = classifyOutcome(e.valueNet, e.fpNet);
@@ -1092,13 +1093,17 @@ function tipForOutcomeHeader(key){
   return `<div class="tt-title">${o.icon} ${o.name}</div>${o.def}
     <div class="tt-more" style="margin-top:5px">Judged per manager per trade. Net value = value received &minus; given; net points = fantasy pts from players received &minus; from players given up. A trade is a "meh" when net points are within &plusmn;${OUTCOME_MIN_P} (net value doesn't matter for that cutoff); otherwise the signs of net value and net points decide. Column counts the trades; hover a number to list them.</div>`;
 }
+function playerNames(list){
+  return (list || []).map(x=>`<span class="tt-p">${abbrevPlayer(x.n)}</span>`).join(', ') || '&mdash;';
+}
 function tipForOutcomeCell(name, totals, key){
   const o = OUTCOME_BY_KEY[key];
   const list = totals.byClass[key].slice().sort((a,b)=> b.s - a.s || b.w - a.w);
   const n = list.length;
   if(!n) return `<div class="tt-title">${name} &mdash; ${o.icon} ${o.name}</div>No trades in this category.`;
   const lines = list.map(e=>
-    `<div class="tt-trade">${e.s} wk${e.w} &mdash; ${e.other}: Value ${signedNet(e.valueNet)} &middot; Pts ${e.fpNet === null ? '<span style="opacity:.6">n/a</span>' : signedNet(e.fpNet)}</div>`
+    `<div class="tt-trade">${e.s} wk${e.w} &mdash; ${e.other}: Value ${signedNet(e.valueNet)} &middot; Pts ${e.fpNet === null ? '<span style="opacity:.6">n/a</span>' : signedNet(e.fpNet)}
+      <div class="tt-pl">Got: ${playerNames(e.got)}</div><div class="tt-pl">Gave: ${playerNames(e.gave)}</div></div>`
   ).join('');
   return `<div class="tt-title">${name} &mdash; ${o.icon} ${o.name} (${n})</div>
     <div class="tt-list" style="margin-top:4px;padding-top:6px">${lines}</div>`;

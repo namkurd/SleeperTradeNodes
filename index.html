@@ -231,7 +231,14 @@
   table.log th.sortable:hover{color:var(--text-2);}
   table.log th.sortable.sort-active{color:var(--text);}
   table.log th .sort-arrow{display:inline-block; min-width:9px; margin-left:3px; font-size:9px;}
-  td.fp-cell, td.net-cell, td.out-cell{cursor:help; border-bottom-style:dashed;}
+  td.fp-cell, td.net-cell, td.out-cell, td.par-cell{cursor:help; border-bottom-style:dashed;}
+  .par-method{margin:10px 2px 0; font-size:11.5px; color:var(--text-3); line-height:1.5;}
+  .par-method summary{cursor:pointer; color:var(--text-2); font-weight:600;}
+  .par-method p{margin:6px 0; max-width:980px;}
+  #parTable{table-layout:auto; width:auto; min-width:560px; font-size:10.5px; margin-top:6px;}
+  #parTable th, #parTable td{padding:4px 10px; white-space:nowrap;}
+  #parTable td.par-pos{cursor:help; font-family:var(--font-mono); text-align:right;}
+  th.par-col .th-label{border-bottom:1px dashed var(--text-3); cursor:help;}
   th.out-col{padding-left:2px; padding-right:2px;}
   th.out-col .th-label{font-size:15px; text-transform:none; letter-spacing:0; cursor:help; line-height:1.2;}
   td.out-cell{text-align:center;}
@@ -318,6 +325,7 @@
           <colgroup>
             <col style="width:108px"><col style="width:64px"><col style="width:98px">
             <col style="width:122px"><col style="width:92px"><col style="width:66px"><col style="width:158px">
+            <col style="width:120px">
             <col style="width:52px"><col style="width:52px"><col style="width:52px"><col style="width:52px"><col style="width:52px">
           </colgroup>
           <thead><tr>
@@ -328,6 +336,7 @@
             <th class="sortable num num-right wrap-ok" data-key="avg"><span class="th-label">Avg trade value</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right" data-key="net"><span class="th-label">Net</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right fp-col wrap-ok" data-key="fpNet"><span class="th-label">Fantasy Pts Gained</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right fp-col par-col wrap-ok" data-key="parNet" data-tip="Points above replacement gained: points from players received minus points from players given up, each measured above what a replacement-level player at that position would have scored in the same number of starts."><span class="th-label">Pts Above Repl. Gained</span><span class="sort-arrow"></span></th>
             <th class="sortable num out-col" data-key="cw" data-out="cw"><span class="th-label">&#9989;</span><span class="sort-arrow"></span></th>
             <th class="sortable num out-col" data-key="bw" data-out="bw"><span class="th-label">&#128293;</span><span class="sort-arrow"></span></th>
             <th class="sortable num out-col" data-key="meh" data-out="meh"><span class="th-label">&#128528;</span><span class="sort-arrow"></span></th>
@@ -342,10 +351,11 @@
         <h3 class="log-subhead">Every trade<select id="tradeManagerFilter" class="mgr-filter"><option value="">All managers</option></select><span id="tradeManagerFilterCount"></span></h3>
         <table class="log" id="everyTradeTable">
           <colgroup>
-            <col style="width:4.38%"><col style="width:3.02%"><col style="width:5.14%"><col style="width:4.23%">
-            <col style="width:5.14%"><col style="width:4.23%"><col style="width:19.79%"><col style="width:19.79%">
-            <col style="width:4.98%"><col style="width:4.98%"><col style="width:4.53%"><col style="width:5.29%">
-            <col style="width:4.38%"><col style="width:4.38%"><col style="width:5.74%">
+            <col style="width:4.0%"><col style="width:2.8%"><col style="width:4.8%"><col style="width:3.9%">
+            <col style="width:4.8%"><col style="width:3.9%"><col style="width:15.35%"><col style="width:15.35%">
+            <col style="width:4.5%"><col style="width:4.5%"><col style="width:4.2%"><col style="width:4.9%">
+            <col style="width:4.2%"><col style="width:4.2%"><col style="width:5.2%"><col style="width:4.2%">
+            <col style="width:4.2%"><col style="width:5.0%">
           </colgroup>
           <thead><tr>
             <th class="sortable num num-right" data-key="s"><span class="th-label">Season</span><span class="sort-arrow"></span></th>
@@ -362,10 +372,21 @@
             <th class="sortable num num-right fp-col" data-key="fpa"><span class="th-label">PTS A</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right fp-col" data-key="fpb"><span class="th-label">PTS B</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right fp-col" data-key="fpNet"><span class="th-label">Net PTS A</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right fp-col par-col" data-key="pra" data-tip="Points above replacement received by Mgr. A: points scored while started, minus replacement-level points for the same number of starts."><span class="th-label">PAR A</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right fp-col par-col" data-key="prb" data-tip="Points above replacement received by Mgr. B."><span class="th-label">PAR B</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right fp-col par-col" data-key="prNet" data-tip="Net points above replacement for Mgr. A (PAR A minus PAR B)."><span class="th-label">Net PAR A</span><span class="sort-arrow"></span></th>
           </tr></thead>
           <tbody id="logBody"></tbody>
         </table>
         <p class="log-note">&#129657; Marks players who were Out, Doubtful or on injured reserve going into the next game week after the trade. For a few 2021&ndash;2025 trades the value was lowered (&ldquo;was X&rdquo;) because the source hadn&rsquo;t priced the injury in; every other value is used as-is.</p>
+        <details class="par-method" id="parMethod" style="display:none">
+          <summary>How &ldquo;points above replacement&rdquo; (PAR) is calculated</summary>
+          <p><b>PAR</b> = the points a traded player scored while <em>started</em> for the manager who received him (the same number as the PTS columns) minus what a replacement-level player at his position would have scored over the same number of starts: <b>PAR = pts &minus; replacement PPG &times; games started</b>. A player who never started is 0; one who started but scored below replacement is negative.</p>
+          <p><b>Replacement level</b> is set per season and position: the points per game of the player ranked at a cutoff. The cutoff = the average number of that position managers actually started each week (measured from the real lineups, so flex and superflex slots are counted automatically) + bench depth (half a player per team at QB, TE, K and DEF; one per team at RB and WR) &times; the number of teams. Example: 10 teams, one QB slot &rarr; about 10 starters + 5 = QB15.</p>
+          <p>Every NFL player at the position is ranked by points per game, using this league&rsquo;s own scoring for that season (rebuilt from Sleeper&rsquo;s raw weekly stats; it matches Sleeper&rsquo;s weekly scores exactly), over completed regular-season weeks, counting only players who played at least 40% of them. The current season&rsquo;s cutoffs are based on the weeks played so far and will move. Hover a cell for the details.</p>
+          <div class="log-table-wrap" style="padding:0"><table class="log" id="parTable"><thead><tr><th>Season</th><th class="num-right">Teams</th><th class="num-right">QB</th><th class="num-right">RB</th><th class="num-right">WR</th><th class="num-right">TE</th><th class="num-right">K</th><th class="num-right">DEF</th></tr></thead><tbody id="parBody"></tbody></table></div>
+          <p style="margin-top:4px">Each cell: cutoff rank &middot; replacement PPG.</p>
+        </details>
       </div>
     </details>
   </div>
@@ -478,6 +499,8 @@ function orientForManager(t, manager){
     va: t.vb, vb: t.va,
     fpa: t.fpb, fpb: t.fpa,
     fpNet: (t.fpNet === null || t.fpNet === undefined) ? t.fpNet : -t.fpNet,
+    pra: t.prb, prb: t.pra,
+    prNet: (t.prNet === null || t.prNet === undefined) ? t.prNet : -t.prNet,
   });
 }
 
@@ -745,6 +768,9 @@ function renderLog(trades){
     const hasFp = t.fpNet !== null && t.fpNet !== undefined;
     const fpNetClass = !hasFp ? '' : (t.fpNet > 0 ? 'net-pos' : (t.fpNet < 0 ? 'net-neg' : ''));
     const fpNetStr = !hasFp ? '&mdash;' : (t.fpNet > 0 ? '+' : '') + fmtVal(t.fpNet);
+    const hasPar = t.pra != null && t.prb != null && t.prNet != null;
+    const parNetClass = !hasPar ? '' : (t.prNet > 0 ? 'net-pos' : (t.prNet < 0 ? 'net-neg' : ''));
+    const parNetStr = !hasPar ? '&mdash;' : (t.prNet > 0 ? '+' : '') + fmtVal(t.prNet);
     return `<tr data-tid="${t.id}">
       <td class="season-tag">${t.s}</td><td class="season-tag">${t.w}</td>
       <td>${t.a}</td><td class="num">${finishCellHtml(t.s, t.a)}</td>
@@ -758,9 +784,13 @@ function renderLog(trades){
       <td class="val-tag fp-cell">${hasFp ? fmtVal(t.fpa) : '&mdash;'}</td>
       <td class="val-tag fp-cell">${hasFp ? fmtVal(t.fpb) : '&mdash;'}</td>
       <td class="val-tag fp-cell ${fpNetClass}">${fpNetStr}</td>
+      <td class="val-tag par-cell">${hasPar ? fmtVal(t.pra) : '&mdash;'}</td>
+      <td class="val-tag par-cell">${hasPar ? fmtVal(t.prb) : '&mdash;'}</td>
+      <td class="val-tag par-cell ${parNetClass}">${parNetStr}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="15" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+  }).join('') || '<tr><td colspan="18" style="color:var(--text-3)">No trades in this filter.</td></tr>';
   updateSortIndicators('everyTradeTable', logSort);
+  if(typeof renderParMethod === 'function') renderParMethod();
 }
 
 // Trade outcome categories, judged per manager from their own net value (value received - given)
@@ -794,7 +824,7 @@ function computeOwnerTotals(trades){
   // source of truth for "net" numbers, shared by the owner-totals table and the graph's
   // node coloring so the two views never disagree.
   const totals = new Map();
-  DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0, fpGiven:0, fpReceived:0, byTrade:[], cw:0, bw:0, meh:0, tl:0, cl:0, byClass:{cw:[], bw:[], meh:[], tl:[], cl:[]}}));
+  DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0, fpGiven:0, fpReceived:0, parGiven:0, parReceived:0, byTrade:[], cw:0, bw:0, meh:0, tl:0, cl:0, byClass:{cw:[], bw:[], meh:[], tl:[], cl:[]}}));
   trades.forEach(t=>{
     const a = totals.get(t.a), b = totals.get(t.b);
     a.trades += 1; a.given += t.va; a.received += t.vb;
@@ -804,12 +834,17 @@ function computeOwnerTotals(trades){
       a.fpGiven += t.fpb; a.fpReceived += t.fpa;
       b.fpGiven += t.fpa; b.fpReceived += t.fpb;
     }
+    const hasPar = t.pra != null && t.prb != null;
+    if(hasPar){
+      a.parGiven += t.prb; a.parReceived += t.pra;
+      b.parGiven += t.pra; b.parReceived += t.prb;
+    }
     // Per-trade contribution toward each side's Net / Fantasy Pts Gained totals, kept so
     // the owner-totals table can show "which trades make up this number" on hover - from
     // t.a's perspective a trade nets (vb-va) in value and (fpa-fpb) in fantasy points; from
     // t.b's perspective it's the mirror image.
-    const ea = {s:t.s, w:t.w, other:t.b, valueNet: t.vb - t.va, fpNet: hasFp ? (t.fpa - t.fpb) : null, got:t.bg, gave:t.ag};
-    const eb = {s:t.s, w:t.w, other:t.a, valueNet: t.va - t.vb, fpNet: hasFp ? (t.fpb - t.fpa) : null, got:t.ag, gave:t.bg};
+    const ea = {s:t.s, w:t.w, other:t.b, valueNet: t.vb - t.va, fpNet: hasFp ? (t.fpa - t.fpb) : null, parNet: hasPar ? (t.pra - t.prb) : null, got:t.bg, gave:t.ag};
+    const eb = {s:t.s, w:t.w, other:t.a, valueNet: t.va - t.vb, fpNet: hasFp ? (t.fpb - t.fpa) : null, parNet: hasPar ? (t.prb - t.pra) : null, got:t.ag, gave:t.bg};
     a.byTrade.push(ea); b.byTrade.push(eb);
     [[a, ea], [b, eb]].forEach(([m, e])=>{
       const k = classifyOutcome(e.valueNet, e.fpNet);
@@ -817,7 +852,7 @@ function computeOwnerTotals(trades){
     });
   });
   // avg = (value given + value received) / this manager's trades in the current filter
-  totals.forEach(v=>{ v.net = v.received - v.given; v.fpNet = v.fpReceived - v.fpGiven; v.avg = v.trades ? (v.given + v.received) / v.trades : 0; });
+  totals.forEach(v=>{ v.net = v.received - v.given; v.fpNet = v.fpReceived - v.fpGiven; v.parNet = v.parReceived - v.parGiven; v.avg = v.trades ? (v.given + v.received) / v.trades : 0; });
   return totals;
 }
 
@@ -838,6 +873,8 @@ function renderOwnerTotals(trades){
     const netStr = (r.net > 0 ? '+' : '') + fmtVal(r.net);
     const fpNetClass = r.fpNet > 0 ? 'net-pos' : (r.fpNet < 0 ? 'net-neg' : '');
     const fpNetStr = (r.fpNet > 0 ? '+' : '') + fmtVal(r.fpNet);
+    const parNetClass = r.parNet > 0 ? 'net-pos' : (r.parNet < 0 ? 'net-neg' : '');
+    const parNetStr = (r.parNet > 0 ? '+' : '') + fmtVal(r.parNet);
     return `<tr data-owner="${r.name}">
       <td>${r.name}</td>
       <td class="num-right val-tag">${r.trades}</td>
@@ -846,15 +883,18 @@ function renderOwnerTotals(trades){
       <td class="num-right val-tag">${fmtVal(r.avg)}</td>
       <td class="num-right val-tag net-cell ${netClass}">${netStr}</td>
       <td class="num-right val-tag fp-cell ${fpNetClass}">${fpNetStr}</td>
+      <td class="num-right val-tag par-cell ${parNetClass}">${parNetStr}</td>
       ${OUTCOMES.map(o=>`<td class="val-tag out-cell" data-out="${o.key}">${r[o.key]}</td>`).join('')}
     </tr>`;
-  }).join('') || '<tr><td colspan="12" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+  }).join('') || '<tr><td colspan="13" style="color:var(--text-3)">No trades in this filter.</td></tr>';
 
   if(rows.length){
     const totalGiven = rows.reduce((s,r)=>s+r.given,0);
     const totalReceived = rows.reduce((s,r)=>s+r.received,0);
     const totalFpGiven = rows.reduce((s,r)=>s+r.fpGiven,0);
     const totalFpReceived = rows.reduce((s,r)=>s+r.fpReceived,0);
+    const totalParGiven = rows.reduce((s,r)=>s+r.parGiven,0);
+    const totalParReceived = rows.reduce((s,r)=>s+r.parReceived,0);
     els.ownerTotalsFoot.innerHTML = `<tr>
       <td>All owners</td>
       <td class="num-right">${trades.length}</td>
@@ -863,6 +903,7 @@ function renderOwnerTotals(trades){
       <td class="num-right">${trades.length ? fmtVal((totalGiven + totalReceived) / trades.length) : '0'}</td>
       <td class="num-right">${fmtVal(totalReceived-totalGiven)}</td>
       <td class="num-right">${fmtVal(totalFpReceived-totalFpGiven)}</td>
+      <td class="num-right">${fmtVal(totalParReceived-totalParGiven)}</td>
       ${OUTCOMES.map(o=>`<td class="out-cell" style="border-bottom:none;cursor:default">${rows.reduce((s,r)=>s+r[o.key],0)}</td>`).join('')}
     </tr>`;
   } else {
@@ -1342,6 +1383,82 @@ function renderPlayers(){
     el.addEventListener('click', (ev)=>{ const t = tipFor(ev); if(t){ showTip(ev, t); ev.stopPropagation(); } });
   });
   document.getElementById('playersBody').addEventListener('mouseleave', ()=> hideTip());
+})();
+
+// ---------- Points above replacement (PAR): tooltips + method table ----------
+// Registered before the log's / owner table's own handlers (and stopping them) so a hovered PAR
+// cell isn't immediately hidden again by the Fantasy-Pts handlers.
+function replFor(season, pos){
+  const r = DATA.replacement && DATA.replacement[season];
+  return r && r.pos && r.pos[pos] ? r.pos[pos] : null;
+}
+function parAssetLine(a, season){
+  if(a.par === undefined || a.par === null) return `<div class="tt-trade">${abbrevPlayer(a.n)} &mdash; n/a</div>`;
+  const st = a.st || 0;
+  if(!st) return `<div class="tt-trade">${abbrevPlayer(a.n)} &mdash; <i>never started since the trade</i> &mdash; ${signedNet(0)}</div>`;
+  const pos = String(a.n).split(' ')[0];
+  const rf = replFor(season, pos);
+  const cut = rf ? ` (${pos}${rf.rank}: ${rf.who})` : '';
+  return `<div class="tt-trade"><span class="tt-p">${abbrevPlayer(a.n)}</span> &mdash; ${fmtVal(a.fp)} pts &minus; ${a.rp} repl. PPG${cut} &times; ${st} started = ${signedNet(a.par)}</div>`;
+}
+function tipForParTrade(t){
+  if(t.pra == null || t.prb == null) return `<div class="tt-title">${t.s} wk${t.w}</div>No replacement-level data for this trade.`;
+  const tc = tooltipColorScale();
+  return `<div class="tt-title">${t.s} wk${t.w} &mdash; points above replacement</div>
+    <div class="tt-list" style="margin-top:0;padding-top:0;border-top:none;color:${tc(t.a)}">
+      <b>${t.a}</b> received &mdash; ${signedNet(t.pra)} total
+      ${t.bg.map(a=>parAssetLine(a, t.s)).join('')}
+    </div>
+    <div class="tt-list" style="color:${tc(t.b)}">
+      <b>${t.b}</b> received &mdash; ${signedNet(t.prb)} total
+      ${t.ag.map(a=>parAssetLine(a, t.s)).join('')}
+    </div>
+    <div class="tt-net"><span class="k">Pts above repl.</span>${winnerChip(tc, t.a, t.b, t.pra - t.prb)}</div>
+    <div class="tt-more">points while started &minus; replacement PPG &times; games started. Replacement PPG = the PPG of the cutoff-ranked player at that position that season; see &ldquo;How points above replacement is calculated&rdquo; below the table.</div>`;
+}
+function tipForOwnerPar(name, totals){
+  const all = totals.byTrade.filter(e=> e.parNet !== null && e.parNet !== undefined).sort((a,b)=> b.s - a.s || b.w - a.w);
+  if(!all.length) return `<div class="tt-title">${name} &mdash; Pts above replacement gained</div>No replacement-level data for these trades.`;
+  const lines = all.map(e=> `<div class="tt-trade">${e.s} wk${e.w} &mdash; ${e.other}: ${signedNet(e.parNet)}</div>`).join('');
+  return `<div class="tt-title">${name} &mdash; pts above replacement gained, by trade</div><div class="tt-list">${lines}</div>`;
+}
+function renderParMethod(){
+  const box = document.getElementById('parMethod'), body = document.getElementById('parBody');
+  const R = DATA.replacement;
+  if(!box || !body || !R || !Object.keys(R).length){ if(box) box.style.display = 'none'; return; }
+  box.style.display = '';
+  body.innerHTML = Object.keys(R).sort((a,b)=> b - a).map(season=>{
+    const r = R[season];
+    const cells = ['QB','RB','WR','TE','K','DEF'].map(pos=>{
+      const p = r.pos && r.pos[pos];
+      if(!p) return '<td class="par-pos">&mdash;</td>';
+      const tip = `<div class="tt-title">${season} ${pos} replacement</div>Cutoff rank <b>${pos}${p.rank}</b> = ${p.st} started per week + ${p.buf} bench depth (${r.teams} teams).<br>Player at the cutoff: <b>${p.who}</b> &mdash; ${p.ppg} pts/game over ${p.gp} games.<br>${p.n} ${pos}s ranked (min. ${r.minGp} games).`;
+      return `<td class="par-pos" data-tip="${tip.replace(/"/g,'&quot;')}">${p.rank} &middot; ${p.ppg.toFixed(2)}</td>`;
+    }).join('');
+    const partial = r.weeks < r.regWeeks ? ` <span style="opacity:.7">(through wk ${r.weeks})</span>` : '';
+    return `<tr><td>${season}${partial}</td><td class="num-right">${r.teams}</td>${cells}</tr>`;
+  }).join('');
+}
+(function(){
+  const logCell = (ev)=>{
+    const c = ev.target.closest('.par-cell'); if(!c) return null;
+    const row = c.closest('tr[data-tid]'); const t = row && lastTradeById[row.dataset.tid];
+    return t ? tipForParTrade(t) : null;
+  };
+  const ownCell = (ev)=>{
+    const c = ev.target.closest('.par-cell'); if(!c) return null;
+    const row = c.closest('tr[data-owner]'); const totals = row && lastOwnerTotals && lastOwnerTotals.get(row.dataset.owner);
+    return totals ? tipForOwnerPar(row.dataset.owner, totals) : null;
+  };
+  const headTip = (ev)=>{ const th = ev.target.closest('th.par-col[data-tip]'); return th ? `<div>${th.dataset.tip}</div>` : null; };
+  const methodTip = (ev)=>{ const td = ev.target.closest('td.par-pos[data-tip]'); return td ? td.dataset.tip : null; };
+  [[els.logBody, logCell], [els.ownerTotalsBody, ownCell], [document.querySelector('#everyTradeTable thead'), headTip],
+   [document.querySelector('#ownerTotalsTable thead'), headTip], [document.getElementById('parBody'), methodTip]].forEach(([el, fn])=>{
+    if(!el) return;
+    el.addEventListener('mousemove', (ev)=>{ const h = fn(ev); if(h){ showTip(ev, h); ev.stopImmediatePropagation(); } else if(el.id === 'parBody' || el.tagName === 'THEAD'){ hideTip(); } });
+    el.addEventListener('click', (ev)=>{ const h = fn(ev); if(h){ showTip(ev, h); ev.stopPropagation(); } });
+    if(el.id === 'parBody' || el.tagName === 'THEAD') el.addEventListener('mouseleave', ()=> hideTip());
+  });
 })();
 function showTip(ev, html){
   els.tooltip.innerHTML = html;

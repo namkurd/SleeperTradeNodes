@@ -1,0 +1,84 @@
+{
+ "1032765175201443840": {
+  "TE Mark Andrews - BAL": {
+   "f": 0.35,
+   "i": "Ankle",
+   "k": "IR"
+  }
+ },
+ "1146819957225811968": {
+  "WR Khalil Shakir - BUF": {
+   "f": 0.846,
+   "i": "Ankle",
+   "k": "Out"
+  },
+  "WR Rashee Rice - KC": {
+   "f": 0.538,
+   "i": "Ankle",
+   "k": "IR"
+  }
+ },
+ "1146922981621469184": {
+  "RB Jonathon Brooks - CAR": {
+   "f": 0.538,
+   "i": "",
+   "k": "IR"
+  }
+ },
+ "1149432708842655744": {
+  "RB Rachaad White - WAS": {
+   "f": 0.917,
+   "i": "Foot",
+   "k": "Dbt"
+  }
+ },
+ "1154496822514335744": {
+  "WR Nico Collins - HOU": {
+   "f": 0.4,
+   "i": "",
+   "k": "IR"
+  }
+ },
+ "1157063133136117760": {
+  "RB Christian McCaffrey - SF": {
+   "f": 0.35,
+   "i": "",
+   "k": "IR"
+  }
+ },
+ "1275300176575074304": {
+  "RB Najee Harris - NYG": {
+   "f": 0.571,
+   "i": "Eye",
+   "k": "IR"
+  }
+ },
+ "1282138495007096832": {
+  "TE Brock Bowers - LV": {
+   "f": 0.909,
+   "i": "Knee",
+   "k": "Dbt"
+  }
+ },
+ "1291864156021993472": {
+  "WR Brian Thomas - JAX": {
+   "f": 0.75,
+   "i": "Ankle",
+   "k": "Out"
+  }
+ },
+ "756315555497189376": {
+  "RB David Montgomery - HOU": {
+   "f": 0.455,
+   "i": "Knee",
+   "k": "IR"
+  }
+ },
+ "898437715375415296": {
+  "WR Cooper Kupp - SEA": {
+   "f": 0.35,
+   "i": "Ankle",
+   "k": "IR"
+  }
+ }
+}

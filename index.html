@@ -196,6 +196,8 @@
      player's name with no way to recover it - wrapping keeps it all visible. */
   .asset-line{white-space:normal; overflow-wrap:break-word;}
   .asset-value{font-family:var(--font-mono); font-variant-numeric:tabular-nums; color:var(--text-2); margin-left:5px;}
+  .inj-tag{font-size:10.5px; color:var(--text-3); margin-left:5px; white-space:nowrap;}
+  .log-note{margin:8px 2px 0; font-size:11.5px; color:var(--text-3); line-height:1.4;}
   .finish-cell{font-family:var(--font-mono); font-weight:700; cursor:help;}
   .finish-cell.finish-gold{color:var(--gold);}
   .finish-cell.finish-silver{color:var(--silver);}
@@ -333,6 +335,7 @@
           </tr></thead>
           <tbody id="logBody"></tbody>
         </table>
+        <p class="log-note">&#129657; Values are discounted for players who were Out, Doubtful or on injured reserve going into the next game week after the trade (based only on what was known at the time, not on games missed later). The original value is shown as &ldquo;was&rdquo;.</p>
       </div>
     </details>
   </div>
@@ -617,9 +620,24 @@ els.rankList.addEventListener('click', (ev)=>{
 
 let lastTradeById = {};
 
+// Injury adjustment (see injury_adjust.py): x.v is the adjusted value, x.v0 the original, x.inj the
+// status known going into the trade's next game week (IR / Out / Dbt), x.ij the injury.
+const INJ_LABEL = {IR:'IR', Out:'Out', Dbt:'Doubtful'};
+function injText(x){
+  if(!x || !x.inj) return '';
+  return (INJ_LABEL[x.inj] || x.inj) + (x.ij ? ' ' + String(x.ij).toLowerCase() : '');
+}
+function injTag(x, compact){
+  if(!x || !x.inj) return '';
+  const was = (x.v0 !== undefined) ? 'was ' + fmtVal(x.v0) + ' &middot; ' : '';
+  return compact
+    ? ` <span class="inj-tag" title="Discounted for injury known at the time of the trade">&#129657; ${was}${injText(x)}</span>`
+    : ` <span class="inj-tag" title="Discounted for injury known at the time of the trade">&#129657; ${was}${injText(x)}</span>`;
+}
+
 function assetListHtml(list){
   if(!list || !list.length) return '<span style="color:var(--text-3)">&mdash;</span>';
-  return `<div class="asset-list">${list.map(x=>`<div class="asset-line">${x.n}<span class="asset-value">(${fmtVal(x.v)})</span></div>`).join('')}</div>`;
+  return `<div class="asset-list">${list.map(x=>`<div class="asset-line">${x.n}<span class="asset-value">(${fmtVal(x.v)})</span>${injTag(x)}</div>`).join('')}</div>`;
 }
 
 function ordinal(n){
@@ -995,7 +1013,7 @@ function abbrevPlayer(n){
   return pos + ' ' + f + ' ' + parts.slice(1).join(' ');
 }
 function namesWithValues(list){
-  return list.map(x=>`<span class="tt-p">${abbrevPlayer(x.n)} (${fmtVal(x.v)})</span>`).join(', ') || '(nothing charted)';
+  return list.map(x=>`<span class="tt-p">${abbrevPlayer(x.n)} (${fmtVal(x.v)})${injTag(x, true)}</span>`).join(', ') || '(nothing charted)';
 }
 // Compact "who came out ahead" chip. diff > 0 favors manager a, < 0 favors b, null = no data.
 function winnerChip(tc, a, b, diff){

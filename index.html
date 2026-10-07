@@ -962,7 +962,8 @@ function winnerChip(tc, a, b, diff){
 // One-line "Value Ben +4.0 | Pts Alex +25.2" for a single trade (a/b = the two managers shown).
 function netLine(tc, t){
   const vDiff = t.vb - t.va; // positive = t.a received more value than they gave
-  const pDiff = (t.fpa != null && t.fpb != null) ? t.fpa - t.fpb : null;
+  const noGames = t.ag.concat(t.bg).every(x=> !x.stop && !x.st && !x.bn); // nothing played yet -> points n/a, not "even"
+  const pDiff = (!noGames && t.fpa != null && t.fpb != null) ? t.fpa - t.fpb : null;
   return `<div class="tt-net"><span class="k">Value</span>${winnerChip(tc, t.a, t.b, vDiff)}<span class="sep">|</span><span class="k">Pts</span>${winnerChip(tc, t.a, t.b, pDiff)}</div>`;
 }
 function tipForPair(p, maxShown){
@@ -1021,16 +1022,17 @@ function tipForFantasyTrade(t){
   if(t.fpNet === null || t.fpNet === undefined){
     return `<div class="tt-title">${t.s} wk${t.w}</div>No fantasy-outcome data for this trade.`;
   }
+  const tc = tooltipColorScale();
   return `<div class="tt-title">${t.s} wk${t.w} &mdash; fantasy outcome</div>
-    <div class="tt-list" style="margin-top:0;padding-top:0;border-top:none">
+    <div class="tt-list" style="margin-top:0;padding-top:0;border-top:none;color:${tc(t.a)}">
       <b>${t.a}</b> received &mdash; ${fmtVal(t.fpa)} pts total
       ${t.bg.map(fpAssetLine).join('')}
     </div>
-    <div class="tt-list">
+    <div class="tt-list" style="color:${tc(t.b)}">
       <b>${t.b}</b> received &mdash; ${fmtVal(t.fpb)} pts total
       ${t.ag.map(fpAssetLine).join('')}
     </div>
-    ${netLine(tooltipColorScale(), t)}
+    ${netLine(tc, t)}
     <div class="tt-more">points scored in completed games after the trade, only while started for the acquiring team; benched or off-roster weeks don't count</div>`;
 }
 function tipForOwnerBreakdown(name, byTrade, kind){

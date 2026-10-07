@@ -129,6 +129,7 @@
     padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:12.5px;
   }
   .rank-row:last-child{border-bottom:none;}
+  .rank-row[data-idx], .pair-bar[data-idx]{cursor:help;}
   .rank-row .who{display:flex; align-items:center; gap:6px; min-width:0;}
   .rank-row .who span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .rank-row .amt{font-family:var(--font-mono); font-weight:600; font-variant-numeric:tabular-nums; flex:none;}
@@ -568,16 +569,36 @@ function renderRank(pairs){
   const sorted = pairs.slice().sort((x,y)=> (state.mode==='count'? y.count-x.count : y.value-x.value));
   const max = sorted.length ? (state.mode==='count'? sorted[0].count : sorted[0].value) : 1;
   els.rankList.className = state.mode==='value' ? 'mode-value' : '';
-  els.rankList.innerHTML = sorted.map(p=>{
+  lastRankPairs = sorted; // so the row hover/tap tooltip can look up each pair's trades by data-idx
+  els.rankList.innerHTML = sorted.map((p,i)=>{
     const val = state.mode==='count' ? p.count : fmtVal(p.value);
     const pct = Math.max(6, Math.round(100*(state.mode==='count'?p.count:p.value)/max));
-    return `<div class="rank-row">
+    return `<div class="rank-row" data-idx="${i}">
       <div class="who"><span>${p.a} &harr; ${p.b}</span></div>
       <div class="amt">${val}</div>
     </div>
-    <div class="pair-bar"><i style="width:${pct}%"></i></div>`;
+    <div class="pair-bar" data-idx="${i}"><i style="width:${pct}%"></i></div>`;
   }).join('') || '<div class="rank-row"><span>No trades in this filter.</span></div>';
 }
+let lastRankPairs = [];
+// Hover (desktop) / tap (mobile) a pair in the Most frequent pairs / Most value exchanged panel
+// to see the trades behind it - same colored, one-manager-per-line layout as the graph's link tooltip.
+function rankTipFor(ev){
+  const el = ev.target.closest('[data-idx]');
+  const p = el && lastRankPairs[+el.dataset.idx];
+  return p ? tipForPair(p, 12) : null;
+}
+els.rankList.addEventListener('mousemove', (ev)=>{
+  const html = rankTipFor(ev);
+  if(html) showTip(ev, html); else hideTip();
+});
+els.rankList.addEventListener('mouseleave', hideTip);
+els.rankList.addEventListener('click', (ev)=>{
+  const html = rankTipFor(ev);
+  if(!html) return;
+  showTip(ev, html);
+  ev.stopPropagation(); // keep the document-level tap-elsewhere dismiss from closing it right away
+});
 
 let lastTradeById = {};
 
@@ -910,10 +931,10 @@ function renderGraph(activeManagers, pairs, degree, trades){
 function namesWithValues(list){
   return list.map(x=>`${x.n} (${fmtVal(x.v)})`).join(', ') || '(nothing charted)';
 }
-function tipForPair(p){
-  const MAX_SHOWN = 6;
+function tipForPair(p, maxShown){
+  const MAX_SHOWN = maxShown || 6;
   const tc = tooltipColorScale();
-  const sorted = p.trades.slice().sort((a,b)=> a.s-b.s || a.w-b.w);
+  const sorted = p.trades.slice().sort((a,b)=> b.s-a.s || b.w-a.w); // most recent first
   const shown = sorted.slice(0, MAX_SHOWN);
   const lines = shown.map(t=>
     `<div class="tt-trade"><b>${t.s}</b> wk${t.w} &mdash; <b>${fmtVal(t.tv)}</b> value pts total
@@ -992,8 +1013,12 @@ function showTip(ev, html){
   els.tooltip.style.opacity = 1;
   els.tooltip.style.right = 'auto';
   const pad = 14;
+  // Measure the real rendered size so tall tooltips (long per-trade lists) and ones near the
+  // right/bottom edge stay fully on screen instead of being cut off.
+  const w = els.tooltip.offsetWidth || 240, h = els.tooltip.offsetHeight || 0;
   let x = ev.clientX + pad, y = ev.clientY + pad;
-  if(x + 240 > window.innerWidth) x = ev.clientX - 240 - pad;
+  if(x + w > window.innerWidth - 6) x = Math.max(6, ev.clientX - w - pad);
+  if(y + h > window.innerHeight - 6) y = Math.max(6, window.innerHeight - h - 6);
   els.tooltip.style.left = x+'px'; els.tooltip.style.top = y+'px';
 }
 // Graph-hover variant: pinned to the top-right corner of the graph panel instead

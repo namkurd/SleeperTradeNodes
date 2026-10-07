@@ -205,7 +205,11 @@
   table.log th.sortable:hover{color:var(--text-2);}
   table.log th.sortable.sort-active{color:var(--text);}
   table.log th .sort-arrow{display:inline-block; min-width:9px; margin-left:3px; font-size:9px;}
-  td.fp-cell, td.net-cell{cursor:help; border-bottom-style:dashed;}
+  td.fp-cell, td.net-cell, td.out-cell{cursor:help; border-bottom-style:dashed;}
+  th.out-col{padding-left:2px; padding-right:2px;}
+  th.out-col .th-label{font-size:15px; text-transform:none; letter-spacing:0; cursor:help; line-height:1.2;}
+  td.out-cell{text-align:center;}
+  th.out-col{text-align:center;}
   th.fp-col .th-label{border-bottom:1px dashed var(--text-3);}
   .net-pos{color:var(--value);}
   .net-neg{color:var(--text-3);}
@@ -226,6 +230,7 @@
   .tooltip .tt-trade i{font-style:normal; opacity:.85;}
   .tooltip .tt-side{margin-top:2px; font-weight:500;}
   .tooltip .tt-more{opacity:.65; font-size:11px;}
+  .tooltip .tt-p{white-space:nowrap;} /* a player's name+number never splits across lines */
   .tooltip .tt-net{margin-top:3px; font-size:11px; opacity:.95;}
   .tooltip .tt-net .k{opacity:.65; margin-right:2px;}
   .tooltip .tt-net .sep{opacity:.4; margin:0 5px;}
@@ -280,6 +285,7 @@
           <colgroup>
             <col style="width:108px"><col style="width:64px"><col style="width:98px">
             <col style="width:122px"><col style="width:92px"><col style="width:66px"><col style="width:158px">
+            <col style="width:52px"><col style="width:52px"><col style="width:52px"><col style="width:52px"><col style="width:52px">
           </colgroup>
           <thead><tr>
             <th>Owner</th>
@@ -289,6 +295,11 @@
             <th class="sortable num num-right wrap-ok" data-key="avg"><span class="th-label">Avg trade value</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right" data-key="net"><span class="th-label">Net</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right fp-col wrap-ok" data-key="fpNet"><span class="th-label">Fantasy Pts Gained</span><span class="sort-arrow"></span></th>
+            <th class="sortable num out-col" data-key="cw" data-out="cw"><span class="th-label">&#9989;</span><span class="sort-arrow"></span></th>
+            <th class="sortable num out-col" data-key="bw" data-out="bw"><span class="th-label">&#128293;</span><span class="sort-arrow"></span></th>
+            <th class="sortable num out-col" data-key="meh" data-out="meh"><span class="th-label">&#128528;</span><span class="sort-arrow"></span></th>
+            <th class="sortable num out-col" data-key="tl" data-out="tl"><span class="th-label">&#128148;</span><span class="sort-arrow"></span></th>
+            <th class="sortable num out-col" data-key="cl" data-out="cl"><span class="th-label">&#10060;</span><span class="sort-arrow"></span></th>
           </tr></thead>
           <tbody id="ownerTotalsBody"></tbody>
           <tfoot id="ownerTotalsFoot"></tfoot>
@@ -674,12 +685,40 @@ function renderLog(trades){
   updateSortIndicators('everyTradeTable', logSort);
 }
 
+// Trade outcome categories, judged per manager from their own net value (value received - given)
+// and net fantasy points (pts from what they received - pts from what they gave up).
+const OUTCOME_MIN = 5; // at least one of the two nets must reach this (either direction) for a trade to be more than a "meh"
+const OUTCOMES = [
+  {key:'cw',  icon:'\u2705',         name:'Clear Win',  def:'Net value AND net points both positive.'},
+  {key:'bw',  icon:'\uD83D\uDD25',  name:'Bold Win',   def:'Net value negative but net points positive: gave up trade-chart value, and the players received out-scored the ones given up.'},
+  {key:'meh', icon:'\uD83D\uDE10',  name:'Meh',        def:'Neither net value nor net points reached ' + OUTCOME_MIN + ' in either direction: basically a wash.'},
+  {key:'tl',  icon:'\uD83D\uDC94',  name:'Tough Loss', def:'Net value positive but net points negative: won on trade-chart value, lost on actual fantasy points.'},
+  {key:'cl',  icon:'\u274C',         name:'Clear Loss', def:'Net value AND net points both negative.'},
+];
+const OUTCOME_BY_KEY = {};
+OUTCOMES.forEach(o=> OUTCOME_BY_KEY[o.key] = o);
+function classifyOutcome(v, p){
+  // v = this manager's net value in the trade, p = their net fantasy points (null = no fantasy data).
+  // Returns an OUTCOMES key, or null when it can't be judged (big value swing but no points data).
+  const bigV = Math.abs(v) >= OUTCOME_MIN;
+  const hasP = p !== null && p !== undefined;
+  const bigP = hasP && Math.abs(p) >= OUTCOME_MIN;
+  if(!bigV && !bigP) return 'meh';
+  if(!hasP) return null;
+  let sv = Math.sign(v), sp = Math.sign(p);
+  if(sv === 0) sv = sp;   // an exact 0 on one side takes the direction of the other
+  if(sp === 0) sp = sv;
+  if(sv > 0 && sp > 0) return 'cw';
+  if(sv < 0 && sp < 0) return 'cl';
+  if(sv < 0 && sp > 0) return 'bw';
+  return 'tl';
+}
 function computeOwnerTotals(trades){
   // Per-manager trade-value and fantasy-point totals for the given trade set - the single
   // source of truth for "net" numbers, shared by the owner-totals table and the graph's
   // node coloring so the two views never disagree.
   const totals = new Map();
-  DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0, fpGiven:0, fpReceived:0, byTrade:[]}));
+  DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0, fpGiven:0, fpReceived:0, byTrade:[], cw:0, bw:0, meh:0, tl:0, cl:0, byClass:{cw:[], bw:[], meh:[], tl:[], cl:[]}}));
   trades.forEach(t=>{
     const a = totals.get(t.a), b = totals.get(t.b);
     a.trades += 1; a.given += t.va; a.received += t.vb;
@@ -693,8 +732,13 @@ function computeOwnerTotals(trades){
     // the owner-totals table can show "which trades make up this number" on hover - from
     // t.a's perspective a trade nets (vb-va) in value and (fpa-fpb) in fantasy points; from
     // t.b's perspective it's the mirror image.
-    a.byTrade.push({s:t.s, w:t.w, other:t.b, valueNet: t.vb - t.va, fpNet: hasFp ? (t.fpa - t.fpb) : null});
-    b.byTrade.push({s:t.s, w:t.w, other:t.a, valueNet: t.va - t.vb, fpNet: hasFp ? (t.fpb - t.fpa) : null});
+    const ea = {s:t.s, w:t.w, other:t.b, valueNet: t.vb - t.va, fpNet: hasFp ? (t.fpa - t.fpb) : null};
+    const eb = {s:t.s, w:t.w, other:t.a, valueNet: t.va - t.vb, fpNet: hasFp ? (t.fpb - t.fpa) : null};
+    a.byTrade.push(ea); b.byTrade.push(eb);
+    [[a, ea], [b, eb]].forEach(([m, e])=>{
+      const k = classifyOutcome(e.valueNet, e.fpNet);
+      if(k){ m[k] += 1; m.byClass[k].push(e); }
+    });
   });
   // avg = (value given + value received) / this manager's trades in the current filter
   totals.forEach(v=>{ v.net = v.received - v.given; v.fpNet = v.fpReceived - v.fpGiven; v.avg = v.trades ? (v.given + v.received) / v.trades : 0; });
@@ -726,8 +770,9 @@ function renderOwnerTotals(trades){
       <td class="num-right val-tag">${fmtVal(r.avg)}</td>
       <td class="num-right val-tag net-cell ${netClass}">${netStr}</td>
       <td class="num-right val-tag fp-cell ${fpNetClass}">${fpNetStr}</td>
+      ${OUTCOMES.map(o=>`<td class="val-tag out-cell" data-out="${o.key}">${r[o.key]}</td>`).join('')}
     </tr>`;
-  }).join('') || '<tr><td colspan="7" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+  }).join('') || '<tr><td colspan="12" style="color:var(--text-3)">No trades in this filter.</td></tr>';
 
   if(rows.length){
     const totalGiven = rows.reduce((s,r)=>s+r.given,0);
@@ -742,6 +787,7 @@ function renderOwnerTotals(trades){
       <td class="num-right">${trades.length ? fmtVal((totalGiven + totalReceived) / trades.length) : '0'}</td>
       <td class="num-right">${fmtVal(totalReceived-totalGiven)}</td>
       <td class="num-right">${fmtVal(totalFpReceived-totalFpGiven)}</td>
+      ${OUTCOMES.map(o=>`<td class="out-cell" style="border-bottom:none;cursor:default">${rows.reduce((s,r)=>s+r[o.key],0)}</td>`).join('')}
     </tr>`;
   } else {
     els.ownerTotalsFoot.innerHTML = '';
@@ -950,7 +996,7 @@ function abbrevPlayer(n){
   return pos + ' ' + f + ' ' + parts.slice(1).join(' ');
 }
 function namesWithValues(list){
-  return list.map(x=>`${abbrevPlayer(x.n)} (${fmtVal(x.v)})`).join(', ') || '(nothing charted)';
+  return list.map(x=>`<span class="tt-p">${abbrevPlayer(x.n)} (${fmtVal(x.v)})</span>`).join(', ') || '(nothing charted)';
 }
 // Compact "who came out ahead" chip. diff > 0 favors manager a, < 0 favors b, null = no data.
 function winnerChip(tc, a, b, diff){
@@ -1004,14 +1050,14 @@ function tipForNode(d){
 function fpAssetLine(a){
   if(a.fp === undefined || a.fp === null) return `<div class="tt-trade">${abbrevPlayer(a.n)} &mdash; no fantasy data</div>`;
   if(!a.stop && !a.st && !a.bn) return `<div class="tt-trade">${abbrevPlayer(a.n)} &mdash; <i>no completed games since the trade yet</i></div>`;
-  let s = `${abbrevPlayer(a.n)} &mdash; <b>${fmtVal(a.fp)}</b> pts`;
+  let s = `<span class="tt-p">${abbrevPlayer(a.n)} &mdash; <b>${fmtVal(a.fp)}</b> pts</span>`;
   if(a.fpr !== undefined && a.fpr !== null && a.fpo !== undefined && a.fpo !== null){
-    s += ` <span style="opacity:.8">(${fmtVal(a.fpr)} reg season, ${fmtVal(a.fpo)} playoffs)</span>`;
+    s += ` <span class="tt-p" style="opacity:.8">(${fmtVal(a.fpr)} reg season, ${fmtVal(a.fpo)} playoffs)</span>`;
   }
   const bits = [];
   if(a.st !== null && a.st !== undefined) bits.push(`${a.st} started`);
   if(a.bn) bits.push(`${a.bn} benched`);
-  if(bits.length) s += ` (${bits.join(', ')})`;
+  if(bits.length) s += ` <span class="tt-p">(${bits.join(', ')})</span>`;
   if(a.stop === 'traded') s += `<br><i>traded away again after wk ${a.stopWk}</i>`;
   else if(a.stop === 'dropped') s += `<br><i>dropped after wk ${a.stopWk}</i>`;
   else if(a.stop === 'season_ended') s += `<br><i>tracking stopped after wk ${a.stopWk} &mdash; team missed the playoffs</i>`;
@@ -1035,7 +1081,33 @@ function tipForFantasyTrade(t){
     ${netLine(tc, t)}
     <div class="tt-more">points scored in completed games after the trade, only while started for the acquiring team; benched or off-roster weeks don't count</div>`;
 }
-function tipForOwnerBreakdown(name, byTrade, kind){
+function ownerCellKind(cell){
+  if(cell.classList.contains('out-cell')) return cell.dataset.out;
+  return cell.classList.contains('fp-cell') ? 'fp' : 'value';
+}
+function signedNet(v){
+  const cls = v > 0 ? 'net-pos' : (v < 0 ? 'net-neg' : '');
+  return `<b class="${cls}">${(v > 0 ? '+' : '') + fmtVal(v)}</b>`;
+}
+function tipForOutcomeHeader(key){
+  const o = OUTCOME_BY_KEY[key];
+  return `<div class="tt-title">${o.icon} ${o.name}</div>${o.def}
+    <div class="tt-more" style="margin-top:5px">Judged per manager per trade. Net value = value received &minus; given; net points = fantasy pts from players received &minus; from players given up. A trade only counts as more than "meh" when at least one net is ${OUTCOME_MIN}+ (up or down). Column counts the trades; hover a number to list them.</div>`;
+}
+function tipForOutcomeCell(name, totals, key){
+  const o = OUTCOME_BY_KEY[key];
+  const list = totals.byClass[key].slice().sort((a,b)=> b.s - a.s || b.w - a.w);
+  const n = list.length;
+  if(!n) return `<div class="tt-title">${name} &mdash; ${o.icon} ${o.name}</div>No trades in this category.`;
+  const lines = list.map(e=>
+    `<div class="tt-trade">${e.s} wk${e.w} &mdash; ${e.other}: Value ${signedNet(e.valueNet)} &middot; Pts ${e.fpNet === null ? '<span style="opacity:.6">n/a</span>' : signedNet(e.fpNet)}</div>`
+  ).join('');
+  return `<div class="tt-title">${name} &mdash; ${o.icon} ${o.name} (${n})</div>
+    <div class="tt-list" style="margin-top:4px;padding-top:6px">${lines}</div>`;
+}
+function tipForOwnerBreakdown(name, totals, kind){
+  if(OUTCOME_BY_KEY[kind]) return tipForOutcomeCell(name, totals, kind);
+  const byTrade = totals.byTrade;
   // kind: 'value' -> Net column breakdown, 'fp' -> Fantasy Pts Gained column breakdown.
   // Lists every trade that contributes to this total, most-recent-first (season desc, then
   // week desc, matching the rest of the UI). For 'fp', a trade with no fantasy-outcome data
@@ -1058,6 +1130,17 @@ function tipForOwnerBreakdown(name, byTrade, kind){
   return `<div class="tt-title">${name} &mdash; ${label} by trade</div>
     <div class="tt-list">${lines}${more}</div>`;
 }
+function outcomeHeaderTipFor(ev){
+  const th = ev.target.closest('th.out-col');
+  return th ? tipForOutcomeHeader(th.dataset.out) : null;
+}
+(function(){
+  const head = document.querySelector('#ownerTotalsTable thead');
+  head.addEventListener('mousemove', (ev)=>{ const h = outcomeHeaderTipFor(ev); if(h) showTip(ev, h); else hideTip(); });
+  head.addEventListener('mouseleave', ()=> hideTip());
+  // tap-to-show on mobile; the th's own click (sorting) already ran, so this just adds the tooltip
+  head.addEventListener('click', (ev)=>{ const h = outcomeHeaderTipFor(ev); if(h){ showTip(ev, h); ev.stopPropagation(); } });
+})();
 function showTip(ev, html){
   els.tooltip.innerHTML = html;
   els.tooltip.style.opacity = 1;
@@ -1118,24 +1201,24 @@ document.addEventListener('click', ()=>{
 });
 
 els.ownerTotalsBody.addEventListener('mousemove', (ev)=>{
-  const cell = ev.target.closest('.net-cell, .fp-cell');
+  const cell = ev.target.closest('.net-cell, .fp-cell, .out-cell');
   if(!cell){ hideTip(); return; }
   const row = cell.closest('tr[data-owner]');
   const totals = row && lastOwnerTotals && lastOwnerTotals.get(row.dataset.owner);
   if(!totals){ hideTip(); return; }
-  const kind = cell.classList.contains('fp-cell') ? 'fp' : 'value';
-  showTip(ev, tipForOwnerBreakdown(row.dataset.owner, totals.byTrade, kind));
+  const kind = ownerCellKind(cell);
+  showTip(ev, tipForOwnerBreakdown(row.dataset.owner, totals, kind));
 });
 els.ownerTotalsBody.addEventListener('mouseleave', hideTip);
 // tap-to-show on mobile (mousemove doesn't fire on touch), mirroring the finish-cell pattern above.
 els.ownerTotalsBody.addEventListener('click', (ev)=>{
-  const cell = ev.target.closest('.net-cell, .fp-cell');
+  const cell = ev.target.closest('.net-cell, .fp-cell, .out-cell');
   if(!cell) return;
   const row = cell.closest('tr[data-owner]');
   const totals = row && lastOwnerTotals && lastOwnerTotals.get(row.dataset.owner);
   if(!totals) return;
-  const kind = cell.classList.contains('fp-cell') ? 'fp' : 'value';
-  showTip(ev, tipForOwnerBreakdown(row.dataset.owner, totals.byTrade, kind));
+  const kind = ownerCellKind(cell);
+  showTip(ev, tipForOwnerBreakdown(row.dataset.owner, totals, kind));
   ev.stopPropagation();
 });
 

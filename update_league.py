@@ -37,6 +37,7 @@ import csv, io, json, os, sys, time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 import requests
+import injury_adjust
 
 HERE = Path(__file__).parent
 FROZEN_HISTORY = HERE / "frozen_history_2021_2025.json"   # never recomputed - see freeze_historical.py
@@ -577,6 +578,7 @@ def build_2026_plus_trades():
                 "total_value": round(value_a + value_b, 2),
                 "fp_a_received": fp_a_received, "fp_b_received": fp_b_received,
                 "fp_net_a": round(fp_a_received - fp_b_received, 2),
+                "created_ms": t.get("created_ms"),
             })
     return all_trades
 
@@ -597,6 +599,7 @@ def to_compact(trades):
             "va": t["value_a_gave"], "vb": t["value_b_gave"], "tv": t["total_value"],
             "fpa": t["fp_a_received"], "fpb": t["fp_b_received"], "fpNet": t["fp_net_a"],
             "id": str(t["trade_id"]),
+            **({"ts": t["created_ms"]} if t.get("created_ms") else {}),
         })
     return managers, out
 
@@ -616,6 +619,10 @@ def main():
             continue
         seen.add(t["id"])
         deduped.append(t)
+
+    # discount players who were injured / on IR when the trade was made (see injury_adjust.py);
+    # originals are kept in "v0" so the page can show "was X"
+    injury_adjust.adjust_all(deduped)
 
     # liveSeasons: the seasons we actually have a Sleeper league_id for (see LEAGUE_IDS above) -
     # the one-and-only source of truth for "has this season actually started", so the front end

@@ -20,11 +20,18 @@ season, the new value is  value * max(FLOOR_FACTOR, 1 - M/G):
     Out             -> M = OUT_GAMES
     Doubtful        -> M = DOUBTFUL_GAMES
     Questionable    -> no change (most play)
-The original value is always kept (field "v0") so the page can show "was X".
+The original value is kept (field "v0") on every asset whose value was actually changed so the
+page can show "was X".
+
+Which players are actually discounted was decided case by case (the source's value already
+reflected the injury for some of them): only the players with a factor below 1 in
+injury_adjustments.json are changed. Every other injured player is just FLAGGED (fields "inj" /
+"ij") so the page can show the injury icon without touching the value.
 
 2021-2025 results are pre-computed once and frozen in injury_adjustments.json (like the frozen
-trade history). 2026+ trades are computed live each run; if the nflverse download fails the
-2026+ trades simply keep their un-adjusted values for that run.
+trade history). From 2026 on the value feed is assumed to price injuries in already
+(ADJUST_THROUGH_SEASON), so 2026+ trades are computed live each run for the injury icon only and
+never change value. If the nflverse download fails those trades just show no icon for that run.
 """
 import csv
 import datetime as dt
@@ -50,6 +57,7 @@ LAST_WEEK = 17         # fantasy season ends after week 17 (nobody plays week 18
 LOOKAHEAD_DAYS = 3.5
 VALUE_FLOOR = 2.0        # never push a value below the normal "floor" value (or below its own value if lower)
 IR_PREFIXES = ("RES", "PUP", "NON")
+ADJUST_THROUGH_SEASON = 2025   # later seasons: flag only, never change a value
 
 NFLVERSE = "https://github.com/nflverse/nflverse-data/releases/download"
 GAMES_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
@@ -198,13 +206,16 @@ def compute_for_trades(trades):
         for a in t["ag"] + t["bg"]:
             adj = assess(sd, a["n"], when)
             if adj:
+                if s > ADJUST_THROUGH_SEASON:
+                    adj["f"] = 1.0
                 out.setdefault(str(t["id"]), {})[a["n"]] = adj
     return out
 
 
 def apply_adjustments(trades, adj_by_trade):
-    """Mutates compact trades: keeps the original in v0, writes the adjusted v, flags inj/ij, and
-    recomputes va/vb/tv from the assets. Trades with no adjustments are left untouched."""
+    """Mutates compact trades: flags inj/ij on every injured asset; where the factor is below 1 it
+    also keeps the original in v0 and writes the adjusted v, then recomputes va/vb/tv from the
+    assets. Trades with no entries are left untouched."""
     n = 0
     for t in trades:
         adj = adj_by_trade.get(str(t["id"]))
@@ -212,14 +223,15 @@ def apply_adjustments(trades, adj_by_trade):
             continue
         for a in t["ag"] + t["bg"]:
             x = adj.get(a["n"])
-            if not x or "v0" in a:
+            if not x or "inj" in a:
                 continue
-            a["v0"] = a["v"]
-            a["v"] = round(max(min(a["v"], VALUE_FLOOR), a["v"] * x["f"]), 1)
+            if x["f"] < 1:
+                a["v0"] = a["v"]
+                a["v"] = round(max(min(a["v"], VALUE_FLOOR), a["v"] * x["f"]), 1)
+                n += 1
             a["inj"] = x["k"]
             if x.get("i"):
                 a["ij"] = x["i"]
-            n += 1
         t["va"] = round(sum(a["v"] for a in t["ag"]), 2)
         t["vb"] = round(sum(a["v"] for a in t["bg"]), 2)
         t["tv"] = round(t["va"] + t["vb"], 2)
@@ -238,5 +250,5 @@ def adjust_all(trades):
         print(f"  warning: live injury adjustment skipped ({e})")
         live_adj = {}
     n += apply_adjustments(live, live_adj)
-    print(f"injury adjustment: {n} assets adjusted")
+    print(f"injury adjustment: {n} assets value-adjusted")
     return n

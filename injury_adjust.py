@@ -16,7 +16,7 @@ What counts as "known at the time" (public NFL data from the free nflverse proje
 
 How it discounts (all tunable below). For a player with "games out" M and G games left in the
 season, the new value is  value * max(FLOOR_FACTOR, 1 - M/G):
-    IR / PUP / NFI  -> M = IR_GAMES   (IR is a minimum of 4 games; typical stays are longer)
+    IR / PUP / NFI  -> M = IR_GAMES   (4 = the IR minimum stay)
     Out             -> M = OUT_GAMES
     Doubtful        -> M = DOUBTFUL_GAMES
     Questionable    -> no change (most play)
@@ -41,12 +41,12 @@ HERE = Path(__file__).parent
 CACHE_DIR = HERE / "cache"
 STATIC_FILE = HERE / "injury_adjustments.json"
 
-IR_GAMES = 6.0
+IR_GAMES = 4.0         # IR minimum stay
 OUT_GAMES = 2.0
 DOUBTFUL_GAMES = 1.0
 FLOOR_FACTOR = 0.35
 MIN_GAMES_LEFT = 3
-LAST_WEEK = 18
+LAST_WEEK = 17         # fantasy season ends after week 17 (nobody plays week 18)
 LOOKAHEAD_DAYS = 3.5
 VALUE_FLOOR = 2.0        # never push a value below the normal "floor" value (or below its own value if lower)
 IR_PREFIXES = ("RES", "PUP", "NON")
@@ -171,7 +171,7 @@ def assess(sd, asset_name, trade_dt):
     if not kind:
         return None
     games_out = {"IR": IR_GAMES, "Out": OUT_GAMES, "Dbt": DOUBTFUL_GAMES}[kind]
-    games_left = max(MIN_GAMES_LEFT, LAST_WEEK - nxt)
+    games_left = max(MIN_GAMES_LEFT, LAST_WEEK - nxt + 1)
     f = max(FLOOR_FACTOR, 1.0 - games_out / games_left)
     return {"f": round(f, 3), "k": kind, "i": injury}
 

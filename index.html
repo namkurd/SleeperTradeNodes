@@ -275,13 +275,14 @@
         <table class="log owner-totals" id="ownerTotalsTable">
           <colgroup>
             <col style="width:108px"><col style="width:64px"><col style="width:98px">
-            <col style="width:122px"><col style="width:66px"><col style="width:158px">
+            <col style="width:122px"><col style="width:92px"><col style="width:66px"><col style="width:158px">
           </colgroup>
           <thead><tr>
             <th>Owner</th>
             <th class="sortable num num-right" data-key="trades"><span class="th-label">Trades</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right" data-key="given"><span class="th-label">Value given</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right" data-key="received"><span class="th-label">Value received</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right wrap-ok" data-key="avg"><span class="th-label">Avg trade value</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right" data-key="net"><span class="th-label">Net</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right fp-col wrap-ok" data-key="fpNet"><span class="th-label">Fantasy Pts Gained</span><span class="sort-arrow"></span></th>
           </tr></thead>
@@ -671,7 +672,8 @@ function computeOwnerTotals(trades){
     a.byTrade.push({s:t.s, w:t.w, other:t.b, valueNet: t.vb - t.va, fpNet: hasFp ? (t.fpa - t.fpb) : null});
     b.byTrade.push({s:t.s, w:t.w, other:t.a, valueNet: t.va - t.vb, fpNet: hasFp ? (t.fpb - t.fpa) : null});
   });
-  totals.forEach(v=>{ v.net = v.received - v.given; v.fpNet = v.fpReceived - v.fpGiven; });
+  // avg = (value given + value received) / this manager's trades in the current filter
+  totals.forEach(v=>{ v.net = v.received - v.given; v.fpNet = v.fpReceived - v.fpGiven; v.avg = v.trades ? (v.given + v.received) / v.trades : 0; });
   return totals;
 }
 
@@ -697,10 +699,11 @@ function renderOwnerTotals(trades){
       <td class="num-right val-tag">${r.trades}</td>
       <td class="num-right val-tag">${fmtVal(r.given)}</td>
       <td class="num-right val-tag">${fmtVal(r.received)}</td>
+      <td class="num-right val-tag">${fmtVal(r.avg)}</td>
       <td class="num-right val-tag net-cell ${netClass}">${netStr}</td>
       <td class="num-right val-tag fp-cell ${fpNetClass}">${fpNetStr}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="6" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+  }).join('') || '<tr><td colspan="7" style="color:var(--text-3)">No trades in this filter.</td></tr>';
 
   if(rows.length){
     const totalGiven = rows.reduce((s,r)=>s+r.given,0);
@@ -712,6 +715,7 @@ function renderOwnerTotals(trades){
       <td class="num-right">${trades.length}</td>
       <td class="num-right">${fmtVal(totalGiven)}</td>
       <td class="num-right">${fmtVal(totalReceived)}</td>
+      <td class="num-right">${trades.length ? fmtVal((totalGiven + totalReceived) / trades.length) : '0'}</td>
       <td class="num-right">${fmtVal(totalReceived-totalGiven)}</td>
       <td class="num-right">${fmtVal(totalFpReceived-totalFpGiven)}</td>
     </tr>`;

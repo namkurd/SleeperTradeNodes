@@ -197,6 +197,30 @@
   .asset-line{white-space:normal; overflow-wrap:break-word;}
   .asset-value{font-family:var(--font-mono); font-variant-numeric:tabular-nums; color:var(--text-2); margin-left:5px;}
   .inj-tag{font-size:10.5px; color:var(--text-3); margin-left:5px; white-space:nowrap;}
+  .inj-tag.inj-adj{cursor:help; border-bottom:1px dashed var(--text-3);}
+  .tabs{display:flex; gap:4px; border-bottom:1px solid var(--border); margin-top:-4px;}
+  .tab{
+    appearance:none; border:none; background:transparent; color:var(--text-3); cursor:pointer;
+    font-family:var(--font-display); font-weight:700; font-size:13px; letter-spacing:.3px; text-transform:uppercase;
+    padding:9px 14px; border-bottom:2px solid transparent; margin-bottom:-1px;
+  }
+  .tab:hover{color:var(--text-2);}
+  .tab[aria-pressed="true"]{color:var(--text); border-bottom-color:var(--text);}
+  .players-toolbar{display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:14px 14px 4px;}
+  .players-toolbar .log-subhead{margin:0; padding:0;}
+  .players-toolbar input.mgr-filter{width:170px; margin-left:0;}
+  .players-toolbar select.mgr-filter{margin-left:0;}
+  .players-toolbar label{font-family:var(--font-mono); font-size:11px; color:var(--text-2); display:flex; align-items:center; gap:5px; cursor:pointer;}
+  #playersCount{font-family:var(--font-mono); font-weight:500; text-transform:none; color:var(--text-3); letter-spacing:0;}
+  #playersTable{width:100%; min-width:760px; font-size:11px;}
+  #playersTable th, #playersTable td{padding:6px 8px;}
+  #playersTable th .th-label{white-space:normal;}
+  .pl-name{font-weight:600; white-space:normal;}
+  .pl-pos{font-family:var(--font-mono); color:var(--text-3);}
+  .pl-times{font-family:var(--font-mono); font-weight:700;}
+  .pl-line{white-space:nowrap; line-height:1.55;}
+  .pl-line .season-tag{display:inline-block; min-width:62px; text-align:left; margin-right:6px;}
+  .pl-arrow{color:var(--text-3); margin:0 3px;}
   .log-note{margin:8px 2px 0; font-size:11.5px; color:var(--text-3); line-height:1.4;}
   .finish-cell{font-family:var(--font-mono); font-weight:700; cursor:help;}
   .finish-cell.finish-gold{color:var(--gold);}
@@ -250,7 +274,7 @@
       <h1>Trade Network</h1>
       <p>Who trades with whom, across 2021&ndash;2026. Switch between deal frequency and player value moved, and isolate a season.</p>
     </div>
-    <div class="controls">
+    <div class="controls" id="modeControls">
       <div class="segmented" role="group" aria-label="Weighting mode">
         <button data-mode="count" aria-pressed="true" type="button"><span class="dot"></span>Trade count</button>
         <button data-mode="value" aria-pressed="false" type="button"><span class="dot"></span>Value exchanged</button>
@@ -258,8 +282,14 @@
     </div>
   </header>
 
+  <div class="tabs" id="viewTabs" role="group" aria-label="View">
+    <button class="tab" type="button" data-view="network" aria-pressed="true">Network</button>
+    <button class="tab" type="button" data-view="players" aria-pressed="false">Players</button>
+  </div>
+
   <div class="seasons" id="seasonChips" role="group" aria-label="Season filter"></div>
 
+<div id="viewNetwork" style="display:flex; flex-direction:column; gap:14px;">
   <div class="layout">
     <div class="panel graph-panel">
       <svg id="graph"></svg>
@@ -335,10 +365,37 @@
           </tr></thead>
           <tbody id="logBody"></tbody>
         </table>
-        <p class="log-note">&#129657; Values are discounted for players who were Out, Doubtful or on injured reserve going into the next game week after the trade (based only on what was known at the time, not on games missed later). The original value is shown as &ldquo;was&rdquo;.</p>
+        <p class="log-note">&#129657; Marks players who were Out, Doubtful or on injured reserve going into the next game week after the trade. For a few 2021&ndash;2025 trades the value was lowered (&ldquo;was X&rdquo;) because the source hadn&rsquo;t priced the injury in; every other value is used as-is.</p>
       </div>
     </details>
   </div>
+</div>
+
+<div id="viewPlayers" style="display:none; flex-direction:column; gap:14px;">
+  <div class="panel">
+    <div class="players-toolbar">
+      <h3 class="log-subhead">Players traded <span id="playersCount"></span></h3>
+      <input id="playerSearch" class="mgr-filter" type="search" placeholder="Search player..." aria-label="Search players">
+      <select id="playerPos" class="mgr-filter" aria-label="Position"><option value="">All positions</option></select>
+      <label><input type="checkbox" id="playerMulti"> Traded 2+ times</label>
+    </div>
+    <div class="log-table-wrap">
+      <table class="log" id="playersTable">
+        <colgroup><col style="width:150px"><col style="width:46px"><col style="width:72px"><col><col style="width:72px"><col style="width:72px"><col style="width:84px"></colgroup>
+        <thead><tr>
+          <th class="sortable" data-key="name"><span class="th-label">Player</span><span class="sort-arrow"></span></th>
+          <th class="sortable num" data-key="pos"><span class="th-label">Pos</span><span class="sort-arrow"></span></th>
+          <th class="sortable num" data-key="count"><span class="th-label">Times traded</span><span class="sort-arrow"></span></th>
+          <th><span class="th-label">Trades &mdash; who gave him up &rarr; who got him, and his value</span></th>
+          <th class="sortable num-right" data-key="avg"><span class="th-label">Avg value</span><span class="sort-arrow"></span></th>
+          <th class="sortable num-right" data-key="peak"><span class="th-label">Peak value</span><span class="sort-arrow"></span></th>
+          <th class="sortable num" data-key="last"><span class="th-label">Last traded</span><span class="sort-arrow"></span></th>
+        </tr></thead>
+        <tbody id="playersBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
   <footer id="footerText">
     <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value. Trades where one side gave nothing (a player-for-FAAB trade, since FAAB isn't captured as an asset) are excluded entirely. The Fantasy Pts columns are a separate, real measurement from actual games: for each traded player, points earned in the acquiring manager's starting lineup, counting from the first game played after the trade (the week after, or the trade week itself when the trade was made before that week's Sunday games &mdash; 2026 onward) and stopping the moment that manager trades or drops them again; weeks not yet played aren't counted; benched weeks score 0 and don't end the count, but leaving the roster does. If the acquiring manager's team missed the playoffs that season, counting also stops at the end of the regular season (week 15 for 2021&ndash;2025, week 14 starting 2026) even if they kept the player &mdash; points scored once a non-playoff team's season is over don't count. Hover a Fantasy Pts cell for the per-player breakdown, including how much of each player's total came in the regular season versus the playoffs, and whether a stopped clock was caused by a trade, a drop, or a missed playoff berth. Hover a node in the graph above for that owner's trade partner count, net trade value, and net fantasy points gained under the current filter.
@@ -546,9 +603,11 @@ function tooltipColorScale(){
 }
 
 let sim = null;
+let currentView = 'network';
 function render(){
   buildManagerFilterOptions();
   buildChips();
+  if(currentView === 'players'){ renderPlayers(); return; }
   const trades = currentTrades();
   const {pairs, degree} = aggregate(trades);
   const activeManagers = DATA.managers.filter(m=>degree.get(m).count>0);
@@ -627,12 +686,12 @@ function injText(x){
   if(!x || !x.inj) return '';
   return (INJ_LABEL[x.inj] || x.inj) + (x.ij ? ' ' + String(x.ij).toLowerCase() : '');
 }
-function injTag(x, compact){
+function injTag(x){
   if(!x || !x.inj) return '';
-  const was = (x.v0 !== undefined) ? 'was ' + fmtVal(x.v0) + ' &middot; ' : '';
-  return compact
-    ? ` <span class="inj-tag" title="Discounted for injury known at the time of the trade">&#129657; ${was}${injText(x)}</span>`
-    : ` <span class="inj-tag" title="Discounted for injury known at the time of the trade">&#129657; ${was}${injText(x)}</span>`;
+  const adj = x.v0 !== undefined;
+  const label = (adj ? 'was ' + fmtVal(x.v0) + ' &middot; ' : '') + injText(x);
+  const tip = adj ? `Value adjusted down from ${fmtVal(x.v0)}: this injury wasn't factored into the source's value at the time of the trade.` : '';
+  return ` <span class="inj-tag${adj ? ' inj-adj' : ''}"${tip ? ` data-tip="${tip}"` : ''}>&#129657; ${label}</span>`;
 }
 
 function assetListHtml(list){
@@ -1013,7 +1072,7 @@ function abbrevPlayer(n){
   return pos + ' ' + f + ' ' + parts.slice(1).join(' ');
 }
 function namesWithValues(list){
-  return list.map(x=>`<span class="tt-p">${abbrevPlayer(x.n)} (${fmtVal(x.v)})${injTag(x, true)}</span>`).join(', ') || '(nothing charted)';
+  return list.map(x=>`<span class="tt-p">${abbrevPlayer(x.n)} (${fmtVal(x.v)})${injTag(x)}</span>`).join(', ') || '(nothing charted)';
 }
 // Compact "who came out ahead" chip. diff > 0 favors manager a, < 0 favors b, null = no data.
 function winnerChip(tc, a, b, diff){
@@ -1042,6 +1101,8 @@ function tipForPair(p, maxShown){
     </div>`
   ).join('');
   const more = sorted.length > MAX_SHOWN ? `<div class="tt-more">+${sorted.length-MAX_SHOWN} more &mdash; see full log below</div>` : '';
+  const adjNote = shown.some(t=> t.ag.concat(t.bg).some(x=> x.v0 !== undefined))
+    ? `<div class="tt-more">&#129657; value adjusted &mdash; this injury wasn't factored into the source's value at the time</div>` : '';
   // Aggregate over every trade in the pair (not just the shown ones), oriented to p.a.
   let vSum = 0, pSum = 0, pN = 0;
   p.trades.forEach(t=>{
@@ -1055,7 +1116,7 @@ function tipForPair(p, maxShown){
   return `<div class="tt-title">${p.a} &harr; ${p.b}</div>
     <b>${p.count}</b> trade${p.count!==1?'s':''} &middot; <b>${fmtVal(p.value)}</b> value pts total
     ${agg}
-    <div class="tt-list">${lines}${more}</div>`;
+    <div class="tt-list">${lines}${more}${adjNote}</div>`;
 }
 function tipForNode(d){
   const netStr = (d.net > 0 ? '+' : '') + fmtVal(d.net);
@@ -1161,6 +1222,126 @@ function outcomeHeaderTipFor(ev){
   head.addEventListener('mouseleave', ()=> hideTip());
   // tap-to-show on mobile; the th's own click (sorting) already ran, so this just adds the tooltip
   head.addEventListener('click', (ev)=>{ const h = outcomeHeaderTipFor(ev); if(h){ showTip(ev, h); ev.stopPropagation(); } });
+})();
+// ---------- Players tab ----------
+let playerSort = {key: 'count', dir: -1};
+let playerFilters = {q: '', pos: '', multi: false};
+const PLAYER_POS_ORDER = ['QB','RB','WR','TE','K','DEF'];
+function parseAssetName(n){
+  let pos = '', name = String(n).trim();
+  const m = name.match(/^(QB|RB|WR|TE|K|PK|DEF)\s+(.*)$/);
+  if(m){ pos = m[1] === 'PK' ? 'K' : m[1]; name = m[2]; }
+  name = name.replace(/\s+-\s+[A-Z]{2,4}$/, '').trim();
+  return {pos, name};
+}
+function mgrTextColor(name){
+  try{ return managerColorScale()(name); }catch(e){ return 'inherit'; }
+}
+function mgrSpan(name){ return `<span style="color:${mgrTextColor(name)};font-weight:600">${name}</span>`; }
+function buildPlayerRows(trades){
+  const by = new Map();
+  trades.forEach(t=>{
+    [[t.ag, t.a, t.b], [t.bg, t.b, t.a]].forEach(([list, from, to])=>{
+      (list || []).forEach(x=>{
+        const {pos, name} = parseAssetName(x.n);
+        const key = pos + '|' + name.toLowerCase();
+        if(!by.has(key)) by.set(key, {name, pos, entries: []});
+        by.get(key).entries.push({s: t.s, w: t.w, from, to, v: x.v, asset: x});
+      });
+    });
+  });
+  return Array.from(by.values()).map(r=>{
+    r.entries.sort((a,b)=> b.s - a.s || b.w - a.w); // most recent first
+    const vals = r.entries.map(e=>e.v);
+    r.count = r.entries.length;
+    r.avg = vals.reduce((s,v)=>s+v,0) / vals.length;
+    r.peak = Math.max.apply(null, vals);
+    const last = r.entries[0];
+    r.last = last.s * 100 + last.w;
+    return r;
+  });
+}
+function renderPlayers(){
+  const trades = currentTrades();
+  let rows = buildPlayerRows(trades);
+  const posSel = document.getElementById('playerPos');
+  if(posSel && posSel.options.length <= 1){
+    const present = new Set(rows.map(r=>r.pos).filter(Boolean));
+    PLAYER_POS_ORDER.filter(p=>present.has(p)).forEach(p=>{
+      const o = document.createElement('option'); o.value = p; o.textContent = p; posSel.appendChild(o);
+    });
+  }
+  const totalPlayers = rows.length;
+  const q = playerFilters.q.trim().toLowerCase();
+  if(q) rows = rows.filter(r=> r.name.toLowerCase().includes(q));
+  if(playerFilters.pos) rows = rows.filter(r=> r.pos === playerFilters.pos);
+  if(playerFilters.multi) rows = rows.filter(r=> r.count >= 2);
+  const {key, dir} = playerSort;
+  rows.sort((a,b)=>{
+    let c;
+    if(key === 'name' || key === 'pos') c = String(a[key]).localeCompare(String(b[key]));
+    else c = a[key] - b[key];
+    c *= dir;
+    return c || (b.count - a.count) || (b.peak - a.peak) || a.name.localeCompare(b.name);
+  });
+  const filtered = rows.length !== totalPlayers;
+  document.getElementById('playersCount').textContent =
+    `${filtered ? rows.length + ' of ' : ''}${totalPlayers} players · ${trades.reduce((s,t)=>s+t.ag.length+t.bg.length,0)} player-trades`;
+  const body = document.getElementById('playersBody');
+  if(!rows.length){
+    body.innerHTML = `<tr><td colspan="7" style="color:var(--text-3);padding:18px 8px">No players match.</td></tr>`;
+  } else {
+    body.innerHTML = rows.map(r=>{
+      const lines = r.entries.map(e=>
+        `<div class="pl-line"><span class="season-tag">${e.s} wk${e.w}</span>${mgrSpan(e.from)}<span class="pl-arrow">&rarr;</span>${mgrSpan(e.to)}<span class="asset-value">${fmtVal(e.v)}</span>${injTag(e.asset)}</div>`
+      ).join('');
+      return `<tr>
+        <td class="pl-name">${r.name}</td>
+        <td class="num pl-pos">${r.pos || '&mdash;'}</td>
+        <td class="num pl-times">${r.count}</td>
+        <td>${lines}</td>
+        <td class="num-right val-tag">${fmtVal(r.avg)}</td>
+        <td class="num-right val-tag">${fmtVal(r.peak)}</td>
+        <td class="num season-tag" style="text-align:center">${Math.floor(r.last/100)} wk${r.last%100}</td>
+      </tr>`;
+    }).join('');
+  }
+  updateSortIndicators('playersTable', playerSort);
+}
+(function(){
+  document.querySelectorAll('#playersTable thead th.sortable').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.dataset.key;
+      if(playerSort.key === key) playerSort.dir *= -1;
+      else { playerSort.key = key; playerSort.dir = (key === 'name' || key === 'pos') ? 1 : -1; }
+      renderPlayers();
+    });
+  });
+  document.getElementById('playerSearch').addEventListener('input', (ev)=>{ playerFilters.q = ev.target.value; renderPlayers(); });
+  document.getElementById('playerPos').addEventListener('change', (ev)=>{ playerFilters.pos = ev.target.value; renderPlayers(); });
+  document.getElementById('playerMulti').addEventListener('change', (ev)=>{ playerFilters.multi = ev.target.checked; renderPlayers(); });
+  document.querySelectorAll('#viewTabs .tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      currentView = btn.dataset.view;
+      document.querySelectorAll('#viewTabs .tab').forEach(b=> b.setAttribute('aria-pressed', b === btn));
+      document.getElementById('viewNetwork').style.display = currentView === 'network' ? 'flex' : 'none';
+      document.getElementById('viewPlayers').style.display = currentView === 'players' ? 'flex' : 'none';
+      document.getElementById('modeControls').style.display = currentView === 'network' ? '' : 'none';
+      hideTip();
+      render();
+    });
+  });
+})();
+
+// Tooltip for the "value adjusted" injury tag (trade log + Players tab). Registered before the
+// log's own handlers, and stops them, so hovering the tag isn't immediately hidden again.
+(function(){
+  const tipFor = (ev)=>{ const tg = ev.target.closest('.inj-tag[data-tip]'); return tg ? tg.dataset.tip : null; };
+  [els.logBody, document.getElementById('playersBody')].forEach(el=>{
+    el.addEventListener('mousemove', (ev)=>{ const t = tipFor(ev); if(t){ showTip(ev, t); ev.stopImmediatePropagation(); } else if(el.id === 'playersBody'){ hideTip(); } });
+    el.addEventListener('click', (ev)=>{ const t = tipFor(ev); if(t){ showTip(ev, t); ev.stopPropagation(); } });
+  });
+  document.getElementById('playersBody').addEventListener('mouseleave', ()=> hideTip());
 })();
 function showTip(ev, html){
   els.tooltip.innerHTML = html;

@@ -11,7 +11,9 @@ through the most recently completed week, and re-running later (the whole point 
 schedule) adds newly played weeks to every still-open trade automatically.
 
 Tracking rules (mirrors the frozen 2021-2025 pipeline exactly):
-  - Counting starts the week AFTER the trade.
+  - Counting starts the week AFTER the trade (2026+: the trade week itself counts too when the
+    trade was made before that week's Sunday games - see first_counted_week).
+  - Only weeks whose games are all finished are counted (see last_complete_week).
   - A benched week scores 0 but keeps the tracking window open; the moment the asset is no
     longer on the acquiring roster at all, tracking stops for good. Sleeper's transaction log
     is used to tell apart "traded away again" from "dropped/waived".
@@ -32,6 +34,7 @@ step in this whole pipeline going forward.
 --------------------------------------------------------------------------------
 """
 import csv, io, json, os, sys, time
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 import requests
 
@@ -230,7 +233,7 @@ def fetch_trades_for_season(season, league_id, players_by_id, max_week=18):
 
             trades.append({
                 "trade_id": t["transaction_id"],
-                "season": season, "week": week,
+                "season": season, "week": week, "created_ms": t.get("created"),
                 "manager_a": roster_to_name.get(r_a, f"roster{r_a}"),
                 "manager_b": roster_to_name.get(r_b, f"roster{r_b}"),
                 "roster_a": r_a, "roster_b": r_b,
@@ -246,16 +249,20 @@ def fetch_league_transactions(league_id, max_week=18):
     response for a given week isn't cached, since more transactions can still happen there
     later in the season (mirrors fetch_matchup_week's caching rule)."""
     all_txns = []
+    season = next((s for s, lid in LEAGUE_IDS.items() if lid == league_id), None)
+    settled_through = last_complete_week(season) if season is not None else 99
     for week in range(1, max_week + 1):
-        cache_path = CACHE_DIR / f"txns_{league_id}_wk{week}.json"
-        if cache_path.exists():
+        # v2: only weeks that are already over are cached (a week still in progress can gain
+        # more transactions, which an early cached copy would hide forever)
+        cache_path = CACHE_DIR / f"txns_v2_{league_id}_wk{week}.json"
+        if week <= settled_through and cache_path.exists():
             txns = json.loads(cache_path.read_text())
         else:
             try:
                 txns = sleeper_get(f"/league/{league_id}/transactions/{week}")
             except requests.HTTPError:
                 continue
-            if txns:
+            if txns and week <= settled_through:
                 cache_path.write_text(json.dumps(txns))
         for t in txns:
             t["_week"] = week
@@ -298,6 +305,67 @@ def fetch_nfl_state():
         return sleeper_get("/state/nfl")
     except requests.HTTPError:
         return None
+
+
+_NFL_STATE_MEMO = []
+
+def nfl_state_memo():
+    """fetch_nfl_state(), but only once per run (it's consulted per matchup week / per trade)."""
+    if not _NFL_STATE_MEMO:
+        _NFL_STATE_MEMO.append(fetch_nfl_state())
+    return _NFL_STATE_MEMO[0]
+
+
+def last_complete_week(season):
+    """Highest week of `season` whose games are all finished, per Sleeper's own calendar.
+    Sleeper pre-generates matchup objects for EVERY future week (full `players` lists, 0 points),
+    populated from whatever the rosters look like at the moment they're fetched - so "the endpoint
+    returned something" must never be read as "that week was played". Anything past this week is
+    treated as not-yet-happened: not tracked, and (crucially) never cached, since a cached
+    pre-generated week would freeze a stale roster and later make a traded player look like he
+    'left the roster'. Sleeper's week counter rolls over after Monday night, so while the state
+    says week N, weeks 1..N-1 are final."""
+    st = nfl_state_memo()
+    if not st or not st.get("season"):
+        return 99  # can't tell - fall back to "trust whatever the endpoint returns" (old behaviour)
+    try:
+        state_season = int(st["season"])
+    except (TypeError, ValueError):
+        return 99
+    if state_season > season:
+        return 99
+    if state_season < season:
+        return 0
+    stype = st.get("season_type")
+    if stype == "pre":
+        return 0
+    if stype == "off":
+        return 99
+    try:
+        return max(0, int(st.get("week") or 0) - 1)
+    except (TypeError, ValueError):
+        return 99
+
+
+# Thursday-night kickoff date of week 1 for each season (NFL schedule). Used only to decide
+# whether a trade made DURING a week came before that week's Sunday games; if a season is
+# missing here we fall back to "tracking starts the week after the trade". Add one line per year
+# with the other once-a-year maintenance step.
+WEEK1_THURSDAY = {2026: date(2026, 9, 10)}
+
+
+def first_counted_week(season, trade_week, created_ms):
+    """First week whose points count for a traded asset. Normally the week AFTER the trade
+    (matches the frozen 2021-2025 history), BUT a trade made before that same week's Sunday
+    games (leg == trade_week and created before Sunday 17:00 UTC) already had the player on his
+    new roster for a real game, so that week counts too."""
+    thu = WEEK1_THURSDAY.get(season)
+    if thu is None or not created_ms:
+        return trade_week + 1
+    sunday_kickoff = datetime.combine(thu + timedelta(days=7 * (trade_week - 1) + 3),
+                                      datetime.min.time(), tzinfo=timezone.utc) + timedelta(hours=17)
+    created = datetime.fromtimestamp(created_ms / 1000, tz=timezone.utc)
+    return trade_week if created < sunday_kickoff else trade_week + 1
 
 
 def is_regular_season_over(nfl_state, season, reg_end):
@@ -370,10 +438,12 @@ def fetch_parse_snapshot(season, week):
 
 def fetch_matchup_week(season, league_id, week):
     """One week's matchup data (starters, points, full rosters) for every team in the league.
-    Cached to disk; an empty response usually means that week hasn't been generated by Sleeper
-    yet (the season is still in progress), so it's deliberately NOT cached - a later run needs
-    to see the real data once that week happens."""
-    cache_path = CACHE_DIR / f"matchups_{season}_wk{week}.json"
+    Only COMPLETED weeks are ever fetched or cached (an in-progress or future week has partial
+    points / pre-generated rosters that would otherwise get frozen into the cache); returns None
+    for those so callers treat them as "not played yet" and a later run fills them in."""
+    if week > last_complete_week(season):
+        return None  # not finished yet (Sleeper pre-generates future weeks - see last_complete_week)
+    cache_path = CACHE_DIR / f"matchups_v2_{season}_wk{week}.json"
     if cache_path.exists():
         return json.loads(cache_path.read_text())
     data = sleeper_get(f"/league/{league_id}/matchups/{week}")
@@ -469,7 +539,7 @@ def build_2026_plus_trades():
         bracket = fetch_winners_bracket(league_id) if is_regular_season_over(nfl_state, season, reg_end) else None
         drops_index = build_drops_index(league_id)
         for t in raw_trades:
-            start_week = t["week"] + 1
+            start_week = first_counted_week(t["season"], t["week"], t.get("created_ms"))
             # until the bracket exists, don't cap anyone - treat it like the regular season is
             # still ongoing (same "wait for real data" spirit as fetch_matchup_week)
             a_made_playoffs = bracket is None or t["roster_a"] in bracket

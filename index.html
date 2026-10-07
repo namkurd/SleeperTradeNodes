@@ -687,12 +687,11 @@ function renderLog(trades){
 
 // Trade outcome categories, judged per manager from their own net value (value received - given)
 // and net fantasy points (pts from what they received - pts from what they gave up).
-const OUTCOME_MIN_V = 5;   // a trade is a "meh" when net value is within +/-5 ...
-const OUTCOME_MIN_P = 10;  // ... AND net points are within +/-10 (either one exceeding its limit makes it a real win/loss)
+const OUTCOME_MIN_P = 10;  // a trade is a "meh" for a manager when their net fantasy points are within +/-10 (net value doesn't matter for this cutoff)
 const OUTCOMES = [
   {key:'cw',  icon:'\u2705',         name:'Clear Win',  def:'Net value AND net points both positive.'},
   {key:'bw',  icon:'\uD83D\uDD25',  name:'Bold Win',   def:'Net value negative but net points positive: gave up trade-chart value, and the players received out-scored the ones given up.'},
-  {key:'meh', icon:'\uD83D\uDE10',  name:'Meh',        def:'Net value within \u00B1' + OUTCOME_MIN_V + ' AND net points within \u00B1' + OUTCOME_MIN_P + ': basically a wash.'},
+  {key:'meh', icon:'\uD83D\uDE10',  name:'Meh',        def:'Net fantasy points within \u00B1' + OUTCOME_MIN_P + ' (net value is ignored): basically a wash.'},
   {key:'tl',  icon:'\uD83D\uDC94',  name:'Tough Loss', def:'Net value positive but net points negative: won on trade-chart value, lost on actual fantasy points.'},
   {key:'cl',  icon:'\u274C',         name:'Clear Loss', def:'Net value AND net points both negative.'},
 ];
@@ -700,12 +699,10 @@ const OUTCOME_BY_KEY = {};
 OUTCOMES.forEach(o=> OUTCOME_BY_KEY[o.key] = o);
 function classifyOutcome(v, p){
   // v = this manager's net value in the trade, p = their net fantasy points (null = no fantasy data).
-  // Returns an OUTCOMES key, or null when it can't be judged (big value swing but no points data).
-  const bigV = Math.abs(v) > OUTCOME_MIN_V;
+  // Returns an OUTCOMES key, or null when it can't be judged (no points data).
   const hasP = p !== null && p !== undefined;
-  const bigP = hasP && Math.abs(p) > OUTCOME_MIN_P;
-  if(!bigV && !bigP) return 'meh';
   if(!hasP) return null;
+  if(Math.abs(p) <= OUTCOME_MIN_P) return 'meh';
   let sv = Math.sign(v), sp = Math.sign(p);
   if(sv === 0) sv = sp;   // an exact 0 on one side takes the direction of the other
   if(sp === 0) sp = sv;
@@ -1093,7 +1090,7 @@ function signedNet(v){
 function tipForOutcomeHeader(key){
   const o = OUTCOME_BY_KEY[key];
   return `<div class="tt-title">${o.icon} ${o.name}</div>${o.def}
-    <div class="tt-more" style="margin-top:5px">Judged per manager per trade. Net value = value received &minus; given; net points = fantasy pts from players received &minus; from players given up. A trade is a "meh" when net value is within &plusmn;${OUTCOME_MIN_V} and net points are within &plusmn;${OUTCOME_MIN_P}; beyond either limit it counts as a win or loss. Column counts the trades; hover a number to list them.</div>`;
+    <div class="tt-more" style="margin-top:5px">Judged per manager per trade. Net value = value received &minus; given; net points = fantasy pts from players received &minus; from players given up. A trade is a "meh" when net points are within &plusmn;${OUTCOME_MIN_P} (net value doesn't matter for that cutoff); otherwise the signs of net value and net points decide. Column counts the trades; hover a number to list them.</div>`;
 }
 function tipForOutcomeCell(name, totals, key){
   const o = OUTCOME_BY_KEY[key];

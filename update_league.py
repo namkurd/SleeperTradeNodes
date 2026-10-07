@@ -38,6 +38,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 import requests
 import injury_adjust
+import par
 
 HERE = Path(__file__).parent
 FROZEN_HISTORY = HERE / "frozen_history_2021_2025.json"   # never recomputed - see freeze_historical.py
@@ -624,13 +625,21 @@ def main():
     # originals are kept in "v0" so the page can show "was X"
     injury_adjust.adjust_all(deduped)
 
+    # points above replacement for every traded player (see par.py); the tables that define
+    # "replacement" are published too so the page can show exactly how they were built
+    try:
+        replacement = par.add_par(deduped, sys.modules[__name__])
+    except Exception as e:  # noqa: BLE001
+        print(f"  warning: points-above-replacement skipped ({e})")
+        replacement = {}
+
     # liveSeasons: the seasons we actually have a Sleeper league_id for (see LEAGUE_IDS above) -
     # the one-and-only source of truth for "has this season actually started", so the front end
     # never has to guess at a "next season" tab that doesn't exist yet (e.g. showing a 2027 tab
     # while 2027's league hasn't even been created on Sleeper).
     standings = fetch_standings_and_playoffs()
     result = {"managers": all_managers, "trades": deduped, "liveSeasons": sorted(LEAGUE_IDS.keys()),
-              "standings": standings}
+              "standings": standings, "replacement": replacement}
     OUTPUT.write_text(json.dumps(result, separators=(",", ":")))
     print(f"wrote {OUTPUT}: {len(deduped)} trades total ({len(new_compact)} from 2026+), "
           f"{len(all_managers)} managers, standings for {len(standings)} seasons")

@@ -226,6 +226,9 @@
   .tooltip .tt-trade i{font-style:normal; opacity:.85;}
   .tooltip .tt-side{margin-top:2px; font-weight:500;}
   .tooltip .tt-more{opacity:.65; font-size:11px;}
+  .tooltip .tt-net{margin-top:3px; font-size:11px; opacity:.95;}
+  .tooltip .tt-net .k{opacity:.65; margin-right:2px;}
+  .tooltip .tt-net .sep{opacity:.4; margin:0 5px;}
 
   svg text{font-family:var(--font-body); fill:var(--text);}
   .node-label{font-size:11.5px; font-weight:600; pointer-events:none;}
@@ -323,7 +326,7 @@
   </div>
 
   <footer id="footerText">
-    <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value. Trades where one side gave nothing (a player-for-FAAB trade, since FAAB isn't captured as an asset) are excluded entirely. The Fantasy Pts columns are a separate, real measurement from actual games: for each traded player, points earned in the acquiring manager's starting lineup, starting the week after the trade and stopping the moment that manager trades or drops them again; benched weeks score 0 and don't end the count, but leaving the roster does. If the acquiring manager's team missed the playoffs that season, counting also stops at the end of the regular season (week 15 for 2021&ndash;2025, week 14 starting 2026) even if they kept the player &mdash; points scored once a non-playoff team's season is over don't count. Hover a Fantasy Pts cell for the per-player breakdown, including how much of each player's total came in the regular season versus the playoffs, and whether a stopped clock was caused by a trade, a drop, or a missed playoff berth. Hover a node in the graph above for that owner's trade partner count, net trade value, and net fantasy points gained under the current filter.
+    <span id="footerCountSentence"></span> Every player value is normalized to a 0&ndash;100 scale <em>within its own season</em>, where 100 = the single most valuable player charted that season &mdash; this keeps seasons comparable even though the underlying value source changes over time. 2021&ndash;2022 values come from CBS Sports' single-QB redraft trade chart; 2023&ndash;2025 use CBS's 2QB/superflex chart (this league went superflex in 2023); both are matched to the week closest to each trade, using the nearest earlier chart when that exact week wasn't published. Starting in 2026, values come from a live 12-team, PPR, 2QB <strong>redraft</strong> trade-value feed instead of CBS. Team defenses and a handful of players never listed on a chart that season get a small flat placeholder (2&ndash;3 on the normalized scale) rather than a real market value. Trades where one side gave nothing (a player-for-FAAB trade, since FAAB isn't captured as an asset) are excluded entirely. The Fantasy Pts columns are a separate, real measurement from actual games: for each traded player, points earned in the acquiring manager's starting lineup, counting from the first game played after the trade (the week after, or the trade week itself when the trade was made before that week's Sunday games &mdash; 2026 onward) and stopping the moment that manager trades or drops them again; weeks not yet played aren't counted; benched weeks score 0 and don't end the count, but leaving the roster does. If the acquiring manager's team missed the playoffs that season, counting also stops at the end of the regular season (week 15 for 2021&ndash;2025, week 14 starting 2026) even if they kept the player &mdash; points scored once a non-playoff team's season is over don't count. Hover a Fantasy Pts cell for the per-player breakdown, including how much of each player's total came in the regular season versus the playoffs, and whether a stopped clock was caused by a trade, a drop, or a missed playoff berth. Hover a node in the graph above for that owner's trade partner count, net trade value, and net fantasy points gained under the current filter.
   </footer>
 </div>
 
@@ -928,8 +931,39 @@ function renderGraph(activeManagers, pairs, degree, trades){
   }
 }
 
+// "WR Matthew Golden - GB" -> "WR M. Golden" (position kept, first name initialed, team dropped).
+// Multi-word surnames survive ("RB Kenneth Walker III" -> "RB K. Walker III"); team defenses
+// ("DEF Green Bay Packers - GB") collapse to "DEF GB"; anything unrecognised is left untouched.
+function abbrevPlayer(n){
+  const raw = String(n).trim();
+  let s = raw, team = '';
+  const m = s.match(/^(.*?)\s+-\s+([A-Z]{2,3})$/);
+  if(m){ s = m[1]; team = m[2]; }
+  const parts = s.split(/\s+/);
+  const pos = parts.shift();
+  if(!/^(QB|RB|WR|TE|K|DEF|DL|LB|DB|FLEX)$/.test(pos)) return raw;
+  if(pos === 'DEF') return 'DEF ' + (team || parts[parts.length-1] || '');
+  if(!parts.length) return pos;
+  if(parts.length === 1) return pos + ' ' + parts[0];
+  const first = parts[0];
+  const f = (/^([A-Z]\.){1,3}$/.test(first) || /^[A-Z]{2,3}$/.test(first)) ? first : first[0] + '.'; // keep "A.J." / "AJ" as-is
+  return pos + ' ' + f + ' ' + parts.slice(1).join(' ');
+}
 function namesWithValues(list){
-  return list.map(x=>`${x.n} (${fmtVal(x.v)})`).join(', ') || '(nothing charted)';
+  return list.map(x=>`${abbrevPlayer(x.n)} (${fmtVal(x.v)})`).join(', ') || '(nothing charted)';
+}
+// Compact "who came out ahead" chip. diff > 0 favors manager a, < 0 favors b, null = no data.
+function winnerChip(tc, a, b, diff){
+  if(diff === null || diff === undefined || Number.isNaN(diff)) return '<span style="opacity:.6">n/a</span>';
+  if(Math.abs(diff) < 0.05) return 'even';
+  const who = diff > 0 ? a : b;
+  return `<span style="color:${tc(who)};font-weight:600">${who} +${fmtVal(Math.abs(diff))}</span>`;
+}
+// One-line "Value Ben +4.0 | Pts Alex +25.2" for a single trade (a/b = the two managers shown).
+function netLine(tc, t){
+  const vDiff = t.vb - t.va; // positive = t.a received more value than they gave
+  const pDiff = (t.fpa != null && t.fpb != null) ? t.fpa - t.fpb : null;
+  return `<div class="tt-net"><span class="k">Value</span>${winnerChip(tc, t.a, t.b, vDiff)}<span class="sep">|</span><span class="k">Pts</span>${winnerChip(tc, t.a, t.b, pDiff)}</div>`;
 }
 function tipForPair(p, maxShown){
   const MAX_SHOWN = maxShown || 6;
@@ -940,11 +974,23 @@ function tipForPair(p, maxShown){
     `<div class="tt-trade"><b>${t.s}</b> wk${t.w} &mdash; <b>${fmtVal(t.tv)}</b> value pts total
       <div class="tt-side" style="color:${tc(t.a)}">${t.a}: ${namesWithValues(t.ag)}</div>
       <div class="tt-side" style="color:${tc(t.b)}">${t.b}: ${namesWithValues(t.bg)}</div>
+      ${netLine(tc, t)}
     </div>`
   ).join('');
   const more = sorted.length > MAX_SHOWN ? `<div class="tt-more">+${sorted.length-MAX_SHOWN} more &mdash; see full log below</div>` : '';
+  // Aggregate over every trade in the pair (not just the shown ones), oriented to p.a.
+  let vSum = 0, pSum = 0, pN = 0;
+  p.trades.forEach(t=>{
+    const sign = t.a === p.a ? 1 : -1;
+    vSum += sign * (t.vb - t.va);
+    if(t.fpa != null && t.fpb != null){ pSum += sign * (t.fpa - t.fpb); pN++; }
+  });
+  const pTxt = pN ? winnerChip(tc, p.a, p.b, pSum) : winnerChip(tc, p.a, p.b, null);
+  const pNote = pN && pN < p.trades.length ? ` <span style="opacity:.6">(${pN}/${p.trades.length} trades)</span>` : '';
+  const agg = `<div class="tt-net"><span class="k">Net value</span>${winnerChip(tc, p.a, p.b, vSum)}<span class="sep">|</span><span class="k">Net pts</span>${pTxt}${pNote}</div>`;
   return `<div class="tt-title">${p.a} &harr; ${p.b}</div>
     <b>${p.count}</b> trade${p.count!==1?'s':''} &middot; <b>${fmtVal(p.value)}</b> value pts total
+    ${agg}
     <div class="tt-list">${lines}${more}</div>`;
 }
 function tipForNode(d){
@@ -955,8 +1001,9 @@ function tipForNode(d){
     <div class="tt-list">Trade partners (current filter): <b>${d.partners}</b><br>Net trade value: <b>${netStr}</b><br>Net fantasy pts gained: <b>${fpNetStr}</b></div>`;
 }
 function fpAssetLine(a){
-  if(a.fp === undefined || a.fp === null) return `<div class="tt-trade">${a.n} &mdash; no fantasy data</div>`;
-  let s = `${a.n} &mdash; <b>${fmtVal(a.fp)}</b> pts`;
+  if(a.fp === undefined || a.fp === null) return `<div class="tt-trade">${abbrevPlayer(a.n)} &mdash; no fantasy data</div>`;
+  if(!a.stop && !a.st && !a.bn) return `<div class="tt-trade">${abbrevPlayer(a.n)} &mdash; <i>no completed games since the trade yet</i></div>`;
+  let s = `${abbrevPlayer(a.n)} &mdash; <b>${fmtVal(a.fp)}</b> pts`;
   if(a.fpr !== undefined && a.fpr !== null && a.fpo !== undefined && a.fpo !== null){
     s += ` <span style="opacity:.8">(${fmtVal(a.fpr)} reg season, ${fmtVal(a.fpo)} playoffs)</span>`;
   }
@@ -983,7 +1030,8 @@ function tipForFantasyTrade(t){
       <b>${t.b}</b> received &mdash; ${fmtVal(t.fpb)} pts total
       ${t.ag.map(fpAssetLine).join('')}
     </div>
-    <div class="tt-more">points scored starting the week after the trade, only while started for the acquiring team; benched or off-roster weeks don't count</div>`;
+    ${netLine(tooltipColorScale(), t)}
+    <div class="tt-more">points scored in completed games after the trade, only while started for the acquiring team; benched or off-roster weeks don't count</div>`;
 }
 function tipForOwnerBreakdown(name, byTrade, kind){
   // kind: 'value' -> Net column breakdown, 'fp' -> Fantasy Pts Gained column breakdown.

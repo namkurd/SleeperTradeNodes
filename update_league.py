@@ -553,7 +553,7 @@ def build_2026_plus_trades():
                 fp, fpr, fpo, st, bn, stop_wk, stop_reason = track_asset(
                     t["season"], league_id, start_week, t["roster_b"], asset["id"],
                     b_made_playoffs, drops_index)
-                a_gave.append({"name": asset["name"], "value": v, "note": note,
+                a_gave.append({"name": asset["name"], "pid": asset["id"], "value": v, "note": note,
                                 "fantasy_points": fp, "reg_points": fpr, "playoff_points": fpo,
                                 "weeks_started": st, "weeks_benched": bn,
                                 "stop_week": stop_wk, "stop_reason": stop_reason})
@@ -563,7 +563,7 @@ def build_2026_plus_trades():
                 fp, fpr, fpo, st, bn, stop_wk, stop_reason = track_asset(
                     t["season"], league_id, start_week, t["roster_a"], asset["id"],
                     a_made_playoffs, drops_index)
-                b_gave.append({"name": asset["name"], "value": v, "note": note,
+                b_gave.append({"name": asset["name"], "pid": asset["id"], "value": v, "note": note,
                                 "fantasy_points": fp, "reg_points": fpr, "playoff_points": fpo,
                                 "weeks_started": st, "weeks_benched": bn,
                                 "stop_week": stop_wk, "stop_reason": stop_reason})
@@ -592,7 +592,8 @@ def to_compact(trades):
         asset_fields = lambda x: {"n": x["name"], "v": x["value"], "fp": x["fantasy_points"],
                                    "fpr": x["reg_points"], "fpo": x["playoff_points"],
                                    "st": x["weeks_started"], "bn": x["weeks_benched"],
-                                   "stop": x["stop_reason"], "stopWk": x["stop_week"]}
+                                   "stop": x["stop_reason"], "stopWk": x["stop_week"],
+                                   **({"pid": str(x["pid"])} if x.get("pid") is not None else {})}
         out.append({
             "s": t["season"], "w": t["week"], "a": t["manager_a"], "b": t["manager_b"],
             "ag": [asset_fields(x) for x in t["a_gave"]],
@@ -632,6 +633,11 @@ def main():
     except Exception as e:  # noqa: BLE001
         print(f"  warning: points-above-replacement skipped ({e})")
         replacement = {}
+    # PPG rank of every traded player at the time of the trade and at the end of week 17
+    try:
+        par.add_ranks(deduped, sys.modules[__name__])
+    except Exception as e:  # noqa: BLE001
+        print(f"  warning: PPG ranks skipped ({e})")
 
     # liveSeasons: the seasons we actually have a Sleeper league_id for (see LEAGUE_IDS above) -
     # the one-and-only source of truth for "has this season actually started", so the front end

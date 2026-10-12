@@ -25,6 +25,7 @@ was "live" it is the trade's Lineup Δ for that side.
 recomputed on every run from completed weeks.
 """
 import json
+import time
 from pathlib import Path
 
 import par
@@ -240,18 +241,29 @@ def add_lineup(trades, U):
     nothing.  2021-2025 from lineup_static.json; later seasons computed live."""
     static = json.loads(STATIC_FILE.read_text()) if STATIC_FILE.exists() else {}
     live_seasons = sorted({t["s"] for t in trades if str(t["id"]) not in static})
+    prev = {}                            # last published values, used only if a season's fetch fails
+    try:
+        for pt in json.loads((HERE / "data.json").read_text()).get("trades", []):
+            if pt.get("lga") is not None and pt.get("lgd") is not None:
+                prev[str(pt["id"])] = {k: pt[k] for k in ("lga", "lgb", "lgNet", "lgw", "lgd") if k in pt}
+    except Exception:  # noqa: BLE001
+        prev = {}
     raw_by_id, seasons = {}, {}
     players = U.load_players_cache() if live_seasons else None
     for s in live_seasons:
         lid = U.LEAGUE_IDS.get(s) or par.HISTORY_LEAGUE_IDS.get(s)
         if not lid:
             continue
-        try:
-            seasons[s] = _Season(U, s, lid)
-            for r in U.fetch_trades_for_season(s, lid, players):
-                raw_by_id[str(r["trade_id"])] = r
-        except Exception as e:  # noqa: BLE001
-            print(f"  warning: lineup values for {s} skipped ({e})")
+        for attempt in range(1, 4):      # Sleeper occasionally drops a connection: retry before giving up
+            try:
+                seasons[s] = _Season(U, s, lid)
+                for r in U.fetch_trades_for_season(s, lid, players):
+                    raw_by_id[str(r["trade_id"])] = r
+                break
+            except Exception as e:  # noqa: BLE001
+                seasons.pop(s, None)
+                print(f"  warning: lineup values for {s} attempt {attempt} failed ({e})")
+                time.sleep(3 * attempt)
     n = 0
     for t in trades:
         tid = str(t["id"])
@@ -261,6 +273,9 @@ def add_lineup(trades, U):
             continue
         raw, S = raw_by_id.get(tid), seasons.get(t["s"])
         if not raw or not S:
+            if tid in prev:              # season could not be fetched this run: keep the last good values
+                t.update(prev[tid])
+                n += 1
             continue
         try:
             f = _fields(*trade_value(S, raw, t.get("ts")))

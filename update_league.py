@@ -39,6 +39,7 @@ from pathlib import Path
 import requests
 import injury_adjust
 import par
+import lineup
 
 HERE = Path(__file__).parent
 FROZEN_HISTORY = HERE / "frozen_history_2021_2025.json"   # never recomputed - see freeze_historical.py
@@ -626,13 +627,12 @@ def main():
     # originals are kept in "v0" so the page can show "was X"
     injury_adjust.adjust_all(deduped)
 
-    # points above replacement for every traded player (see par.py); the tables that define
-    # "replacement" are published too so the page can show exactly how they were built
+    # best-lineup value of every trade: the best lineup each roster could start every week WITH the
+    # trade minus WITHOUT it (see lineup.py)
     try:
-        replacement = par.add_par(deduped, sys.modules[__name__])
+        lineup.add_lineup(deduped, sys.modules[__name__])
     except Exception as e:  # noqa: BLE001
-        print(f"  warning: points-above-replacement skipped ({e})")
-        replacement = {}
+        print(f"  warning: best-lineup values skipped ({e})")
     # PPG rank of every traded player at the time of the trade and at the end of week 17
     try:
         par.add_ranks(deduped, sys.modules[__name__])
@@ -645,7 +645,7 @@ def main():
     # while 2027's league hasn't even been created on Sleeper).
     standings = fetch_standings_and_playoffs()
     result = {"managers": all_managers, "trades": deduped, "liveSeasons": sorted(LEAGUE_IDS.keys()),
-              "standings": standings, "replacement": replacement}
+              "standings": standings}
     OUTPUT.write_text(json.dumps(result, separators=(",", ":")))
     print(f"wrote {OUTPUT}: {len(deduped)} trades total ({len(new_compact)} from 2026+), "
           f"{len(all_managers)} managers, standings for {len(standings)} seasons")

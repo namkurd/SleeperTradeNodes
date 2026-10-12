@@ -156,8 +156,15 @@
      column of this many (15) can be given generous fixed pixel widths without
      forcing a horizontal scrollbar on anything narrower than a very wide desktop. */
   #everyTradeTable{font-size:10.5px; width:100%;}
+  @media (max-width:700px){ #everyTradeTable{min-width:940px;} }   /* phones: scroll sideways instead of squeezing every column (the chatter circles were clipped) */
   #everyTradeTable th .th-label{white-space:normal;}
   #everyTradeTable th, #everyTradeTable td{padding:5px 5px;}
+  .sent-cell{cursor:help; white-space:nowrap; overflow:visible !important;}
+  .sent-cell svg.sd, .tt-trade svg.sd{display:inline-block; vertical-align:middle; flex:none;}
+  .sent-cell svg.sd{margin:-6px 0;}
+  .tt-trade svg.sd{margin:-6px 3px -6px 0;}
+  .sent-cell .sd-sep{color:var(--text-3); margin:0 1px;}
+  .sent-cell .sd-num{font-size:11px; opacity:.8; margin-left:4px;}
   .oc-ico{cursor:help; font-size:11px; white-space:nowrap;}
   .pn{cursor:help; border-bottom:1px dotted var(--text-3);}
   table.log th{
@@ -320,7 +327,7 @@
           <colgroup>
             <col style="width:100px"><col style="width:58px"><col style="width:88px">
             <col style="width:104px"><col style="width:88px"><col style="width:62px"><col style="width:110px">
-            <col style="width:84px">
+            <col style="width:84px"><col style="width:74px">
             <col style="width:52px"><col style="width:52px"><col style="width:52px"><col style="width:52px"><col style="width:52px">
           </colgroup>
           <thead><tr>
@@ -330,8 +337,9 @@
             <th class="sortable num num-right" data-key="received"><span class="th-label">Value received</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right wrap-ok" data-key="avg"><span class="th-label">Avg trade value</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right" data-key="net"><span class="th-label">Net</span><span class="sort-arrow"></span></th>
-            <th class="sortable num num-right fp-col par-col wrap-ok" data-key="parNet" data-tip="Points above replacement gained: points from players received minus points from players given up, each measured above what a replacement-level player at that position would have scored in the same number of starts."><span class="th-label">PAR gained</span><span class="sort-arrow"></span></th>
-            <th class="sortable num num-right fp-col par-col wrap-ok" data-key="parG" data-tip="PAR per game: total net points above replacement divided by the total weeks these trades were live (the most weeks any player in each trade spent on his new roster). Puts early-season and late-season trades on the same footing."><span class="th-label">PAR/G</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right fp-col par-col wrap-ok" data-key="parNet" data-tip="Lineup points gained: for each trade, the best lineup this roster could have started each week WITH the trade minus the best lineup WITHOUT it (players received removed, players given up put back), summed over the weeks the trade was live. Includes bench depth you traded away and depth you already had."><span class="th-label">Lineup &Delta;</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right fp-col par-col wrap-ok" data-key="parG" data-tip="Lineup gain per week: total lineup gain divided by the total weeks these trades were in effect for this owner. Puts early-season and late-season trades on the same footing."><span class="th-label">&Delta;/G</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right par-col wrap-ok" data-key="sentAvg" data-tip="Average chatter score (-100 to +100) toward this owner's side of their discussed 2026+ trades, from what the 10 managers outside each trade said in #trade-discussion. Green = positive, red = negative; bigger circle = stronger. Hover a cell for each trade."><span class="th-label">Chatter</span><span class="sort-arrow"></span></th>
             <th class="sortable num out-col" data-key="cw" data-out="cw"><span class="th-label">&#9989;</span><span class="sort-arrow"></span></th>
             <th class="sortable num out-col" data-key="bw" data-out="bw"><span class="th-label">&#128293;</span><span class="sort-arrow"></span></th>
             <th class="sortable num out-col" data-key="meh" data-out="meh"><span class="th-label">&#128528;</span><span class="sort-arrow"></span></th>
@@ -346,7 +354,7 @@
         <h3 class="log-subhead">Every trade<select id="tradeManagerFilter" class="mgr-filter"><option value="">All managers</option></select><span id="tradeManagerFilterCount"></span></h3>
         <table class="log" id="everyTradeTable">
           <colgroup>
-            <col style="width:4.2%"><col style="width:2.8%"><col style="width:7.0%"><col style="width:4.2%"><col style="width:7.0%"><col style="width:4.2%"><col style="width:15.4%"><col style="width:15.4%"><col style="width:4.6%"><col style="width:4.6%"><col style="width:4.4%"><col style="width:5.0%"><col style="width:5.0%"><col style="width:5.0%"><col style="width:5.4%"><col style="width:5.8%">
+            <col style="width:4.2%"><col style="width:2.8%"><col style="width:6.6%"><col style="width:4.2%"><col style="width:6.6%"><col style="width:4.2%"><col style="width:12.8%"><col style="width:12.8%"><col style="width:4.4%"><col style="width:4.4%"><col style="width:4.2%"><col style="width:4.8%"><col style="width:4.8%"><col style="width:4.8%"><col style="width:5.2%"><col style="width:5.6%"><col style="width:7.6%">
           </colgroup>
           <thead><tr>
             <th class="sortable num num-right" data-key="s"><span class="th-label">Season</span><span class="sort-arrow"></span></th>
@@ -360,23 +368,22 @@
             <th class="sortable num num-right" data-key="vb"><span class="th-label">B Value</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right" data-key="tv"><span class="th-label">Total</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right" data-key="net"><span class="th-label">Net (A)</span><span class="sort-arrow"></span></th>
-            <th class="sortable num num-right fp-col par-col" data-key="pra" data-tip="Points above replacement received by Mgr. A: points scored while started, minus replacement-level points for the same number of starts."><span class="th-label">PAR A</span><span class="sort-arrow"></span></th>
-            <th class="sortable num num-right fp-col par-col" data-key="prb" data-tip="Points above replacement received by Mgr. B."><span class="th-label">PAR B</span><span class="sort-arrow"></span></th>
-            <th class="sortable num num-right fp-col par-col" data-key="prNet" data-tip="Net points above replacement for Mgr. A (PAR A minus PAR B)."><span class="th-label">Net PAR A</span><span class="sort-arrow"></span></th>
-            <th class="sortable num num-right fp-col par-col" data-key="parG" data-tip="Net PAR per game for Mgr. A: net PAR divided by the weeks the trade was live (the most weeks any player in it was on his new roster). Compares early and late trades fairly."><span class="th-label">Net PAR/G A</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right fp-col par-col" data-key="lga" data-tip="Lineup gain for Mgr. A: best possible lineup A could have started each week after the trade, minus the best lineup A would have had without the trade, summed over the weeks it was live."><span class="th-label">Lineup &Delta; A</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right fp-col par-col" data-key="lgb" data-tip="Lineup gain for Mgr. B (same method)."><span class="th-label">Lineup &Delta; B</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right fp-col par-col" data-key="lgNet" data-tip="Lineup gain for Mgr. A minus lineup gain for Mgr. B. The two sides do not have to cancel out: a deal can help both rosters or hurt both."><span class="th-label">Net &Delta; A</span><span class="sort-arrow"></span></th>
+            <th class="sortable num num-right fp-col par-col" data-key="lgG" data-tip="Net lineup gain per week for Mgr. A: Net &Delta; divided by the weeks the trade was in effect. Compares early and late trades fairly."><span class="th-label">Net &Delta;/G A</span><span class="sort-arrow"></span></th>
+            <th class="num par-col" data-tip="Chatter toward each side of the trade (Mgr. A | Mgr. B), from the 10 managers outside the trade, in the 4 days after a 2026+ trade. Green = positive, red = negative, yellow = strongly mixed; circle size = strength (yellow: spread of opinions). Hollow = nobody weighed in. Hover for who said what."><span class="th-label">Chatter A | B</span></th>
           </tr></thead>
           <tbody id="logBody"></tbody>
         </table>
         <p class="log-note">&#129657; Marks players who were Out, Doubtful or on injured reserve going into the next game week after the trade. For a few 2021&ndash;2025 trades the value was lowered (&ldquo;was X&rdquo;) because the source hadn&rsquo;t priced the injury in; every other value is used as-is.</p>
         <div class="par-method" id="parMethod" style="display:none">
-          <div class="par-title">How &ldquo;points above replacement&rdquo; (PAR) is calculated</div>
-          <p><b>PAR</b> = the points a traded player scored while <em>started</em> for the manager who received him minus what a replacement-level player at his position would have scored over the same number of starts: <b>PAR = pts &minus; replacement PPG &times; games started</b>. A player who never started is 0; one who started but scored below replacement is negative.</p>
-          <p><b>Replacement level</b> is set per season and position: the points per game of the player ranked at a cutoff. The cutoff = the average number of that position managers actually started each week (measured from the real lineups, so flex and superflex slots are counted automatically) + bench depth (half a player per team at QB, TE, K and DEF; one per team at RB and WR) &times; the number of teams. Example: 10 teams, one QB slot &rarr; about 10 starters + 5 = QB15.</p>
-          <p>Every NFL player at the position is ranked by points per game, using this league&rsquo;s own scoring for that season (rebuilt from Sleeper&rsquo;s raw weekly stats; it matches Sleeper&rsquo;s weekly scores exactly), over completed regular-season weeks, counting only players who played at least 40% of them. The current season&rsquo;s cutoffs are based on the weeks played so far and will move. Hover a cell for the details.</p>
-          <div class="log-table-wrap" style="padding:0"><table class="log" id="parTable"><thead><tr><th>Season</th><th class="num-right">Teams</th><th class="num-right">QB</th><th class="num-right">RB</th><th class="num-right">WR</th><th class="num-right">TE</th><th class="num-right">K</th><th class="num-right">DEF</th></tr></thead><tbody id="parBody"></tbody></table></div>
-          <p style="margin-top:4px">Each cell: cutoff rank &middot; replacement PPG.</p>
-          <p><b>PAR/G</b> divides a trade&rsquo;s net PAR by the number of weeks it was live (the most weeks any player in it was on his new roster, started or benched), so a week-2 trade and a week-12 trade can be compared on equal terms. An owner&rsquo;s PAR/G is their total net PAR divided by the total live weeks of their trades.</p>
-          <p><b>Player ranks:</b> hover a player name to see his PPG rank at his position (league scoring) going into the trade, and at the end of week 17 (or the latest completed week this season).</p>
+          <div class="par-title">How &ldquo;lineup &Delta;&rdquo; is calculated</div>
+          <p>For every week after a trade, take the roster each manager really had and find the <b>best lineup it could have started</b>: every player on the roster (bench included) is scored with his real points that week, and this season&rsquo;s lineup slots (QB, 2 RB, TE, WR/flex and superflex slots, K, DEF as the league had them) are filled to maximise the total. Then <b>undo the trade</b> &mdash; take away the players the manager received, put back the players he gave up &mdash; and find the best lineup again. <b>Lineup &Delta; = best lineup with the trade &minus; best lineup without it</b>, summed over the weeks the trade was live.</p>
+          <p>Because both versions use the same roster otherwise (same waiver pickups, drops and other trades), the number already prices in the depth a manager traded away and the depth he could plug in: a spare WR who would have filled the flex counts as lost if he was sent away, and a surplus starter who would have sat on the bench adds nothing. Nothing is estimated &mdash; every number is a real score from that week. Points are this league&rsquo;s own scoring (rebuilt from Sleeper&rsquo;s raw weekly stats; matches Sleeper&rsquo;s scores exactly).</p>
+          <p><b>Weeks counted:</b> from the first week the trade counts (the week after it) until the manager no longer rosters anyone he received, or the end of week 17 (end of the regular season if his team missed the playoffs). Only completed weeks count, so the current season grows week by week. The best lineup is the hindsight-optimal one for <em>both</em> versions, so it measures what the roster could have produced, not what was actually started.</p>
+          <p><b>The two sides don&rsquo;t cancel out.</b> A trade can improve both lineups (each manager fills a need) or hurt both. &ldquo;Net &Delta;&rdquo; is A&rsquo;s gain minus B&rsquo;s. <b>&Delta;/G</b> divides by the weeks the trade was live so a week-2 trade and a week-12 trade can be compared; an owner&rsquo;s &Delta;/G is their total gain divided by their total live weeks.</p>
+          <p><b>Outcome icons</b> use the manager&rsquo;s own lineup &Delta; (averaging less than &plusmn;3 points per week = Meh) together with the sign of the trade-chart value. <b>Player ranks:</b> hover a player name to see his PPG rank at his position going into the trade, and at the end of week 17 (or the latest completed week this season).</p>
         </div>
       </div>
     </section>
@@ -483,15 +490,21 @@ function applyManagerFilter(trades){
 }
 
 function orientForManager(t, manager){
-  if(!manager || t.a === manager) return t;
-  return Object.assign({}, t, {
+  // With a manager picked, that manager is "A". Otherwise A is the side whose lineup gained more from the
+  // trade (ties and trades without lineup data keep the original order).
+  let want = false;
+  if(manager) want = t.a !== manager;
+  else if(t.lga != null && t.lgb != null) want = t.lgb > t.lga;
+  if(!want) return t;
+  return Object.assign({}, t, {flip: !t.flip,
     a: t.b, b: t.a,
     ag: t.bg, bg: t.ag,
     va: t.vb, vb: t.va,
     fpa: t.fpb, fpb: t.fpa,
     fpNet: (t.fpNet === null || t.fpNet === undefined) ? t.fpNet : -t.fpNet,
-    pra: t.prb, prb: t.pra,
-    prNet: (t.prNet === null || t.prNet === undefined) ? t.prNet : -t.prNet,
+    lga: t.lgb, lgb: t.lga,
+    lgNet: (t.lgNet === null || t.lgNet === undefined) ? t.lgNet : -t.lgNet,
+    lgd: t.lgd ? {a: t.lgd.b, b: t.lgd.a} : t.lgd,
   });
 }
 
@@ -720,17 +733,104 @@ function assetListHtml(list, t){
   return `<div class="asset-list">${list.map(x=>`<div class="asset-line"><span class="pn" data-aid="${assetId(x, t.s, t.w)}">${abbrevPlayer(x.n)}</span><span class="asset-value">(${fmtVal(x.v)})</span>${injTag(x)}</div>`).join('')}</div>`;
 }
 // Weeks a trade was "live": the most weeks any player in it spent on his new roster.
+// ---------- Chat sentiment (#trade-discussion, 2026+ trades) ----------
+// DATA.sentiment[tradeId] = {v:2, none?:true, notes:[{who, k:'say'|'react', a, b, t, inv?}]}.
+// Each outside manager gets one note with a stance toward side A and side B (-1..+1: strong = +/-1, mild
+// about +/-0.3 to 0.6, an emoji reaction backing someone else's view counts for less). Managers who are
+// IN the trade (inv:true) are shown but never scored. Written by a scheduled job after the 4-day window.
+// Score = 100 x (sum of stances) / 10 outside managers, so +100 needs all 10 to be strongly positive;
+// silent managers count 0. Yellow = both sides of the argument carry weight; its size is the standard
+// deviation of the 10 stances (silent = 0), scaled so a 50/50 split of strong opinions = 100.
+const SENT_N = 10;
+const SENT_COL = {pos:'#3aa76d', neg:'#e0524b', mix:'#e3b341', none:'#9aa1ab'};
+function sentCalc(rec, side){
+  const vals = (rec.notes || []).filter(n=> !n.inv && typeof n[side] === 'number').map(n=> n[side]);
+  const sum = vals.reduce((x,y)=> x + y, 0);
+  const pos = vals.reduce((x,y)=> x + Math.max(y, 0), 0), neg = vals.reduce((x,y)=> x + Math.max(-y, 0), 0);
+  const sq = vals.reduce((x,y)=> x + y * y, 0);
+  const score = Math.max(-100, Math.min(100, 100 * sum / SENT_N));
+  const sd = 100 * Math.sqrt(Math.max(0, sq / SENT_N - Math.pow(sum / SENT_N, 2)));
+  const mixed = pos > 0 && neg > 0 && Math.min(pos, neg) >= Math.max(0.3 * (pos + neg), 0.6);
+  return {s: score, sd: Math.min(100, sd), mixed, spoke: vals.length, pos, neg};
+}
+function sentLabel(c){ return c.spoke === 0 ? 'No outside comments' : (c.mixed ? 'Mixed' : (c.s > 0.5 ? 'Positive' : (c.s < -0.5 ? 'Negative' : 'Neutral'))); }
+const SENT_D0 = 2.4;                  // diameter (px) at a score near 0 = 1x; a +/-100 score = 10x (24px)
+function sentDot(c){
+  const BOX = 10 * SENT_D0;
+  let kind, m;
+  if(c.spoke === 0 || (!c.mixed && Math.abs(c.s) < 0.5)){ kind = 'none'; m = 0; }
+  else if(c.mixed){ kind = 'mix'; m = c.sd; }
+  else { kind = c.s > 0 ? 'pos' : 'neg'; m = Math.abs(c.s); }
+  const d = kind === 'none' ? 5 : SENT_D0 * (1 + 9 * Math.min(100, m) / 100);
+  const col = SENT_COL[kind], r = d / 2;
+  const fill = kind === 'none' ? 'none' : col;
+  return `<svg class="sd" width="${BOX}" height="${BOX}" viewBox="0 0 ${BOX} ${BOX}" aria-hidden="true"><circle cx="${BOX/2}" cy="${BOX/2}" r="${r.toFixed(2)}" fill="${fill}" fill-opacity="${kind === 'none' ? 0 : .9}" stroke="${col}" stroke-width="${kind === 'none' ? 1.25 : 1}"/></svg>`;
+}
+function sentRec(t){
+  const r = DATA.sentiment && DATA.sentiment[t.id];
+  if(!r || r.none || !Array.isArray(r.notes)) return null;
+  if(!r.notes.some(n=> !n.inv)) return null;
+  return {a: sentCalc(r, t.flip ? 'b' : 'a'), b: sentCalc(r, t.flip ? 'a' : 'b'), notes: r.notes};
+}
+function sentState(t){
+  if(t.s < 2026) return 'na';
+  const r = DATA.sentiment && DATA.sentiment[t.id];
+  if(r) return (r.none || !(r.notes || []).some(n=> !n.inv)) ? 'none' : 'scored';
+  return (t.ts && Date.now() < t.ts + 4 * 864e5) ? 'open' : 'unscored';
+}
+function sentBadges(t){
+  const st = sentState(t);
+  if(st === 'scored'){ const r = sentRec(t); return sentDot(r.a) + '<span class="sd-sep">|</span>' + sentDot(r.b); }
+  if(st === 'none') return sentDot({spoke:0, s:0}) + '<span class="sd-sep">|</span>' + sentDot({spoke:0, s:0});
+  if(st === 'open' || st === 'unscored') return '⏳';
+  return '<span style="color:var(--text-3)">&mdash;</span>';
+}
+const sgn = (v)=> (v > 0 ? '+' : '') + v;
+function noteLine(n, t){
+  const na = t.flip ? n.b : n.a, nb = t.flip ? n.a : n.b;   // stances are stored for the original A/B order
+  const stance = (v)=> `<b class="${v > 0 ? 'net-pos' : (v < 0 ? 'net-neg' : '')}">${v > 0 ? '+' : ''}${(Math.round(v * 100) / 100)}</b>`;
+  if(n.inv) return `<div class="tt-trade" style="opacity:.55"><b>${n.who}</b> <i>(in the trade &mdash; not scored)</i>: ${n.t}</div>`;
+  return `<div class="tt-trade"><b>${n.who}</b> <span style="opacity:.75">${n.k === 'react' ? '(reaction)' : ''} &rarr; ${t.a} ${stance(na)} &middot; ${t.b} ${stance(nb)}</span>: ${n.t}</div>`;
+}
+function sentSide(m, c){
+  return `<div class="tt-trade">${sentDot(c)} <b>${m}</b>: ${sentLabel(c)} <span style="opacity:.75">(${c.s > 0 ? '+' : ''}${Math.round(c.s)}${c.mixed ? ', spread ' + Math.round(c.sd) : ''}) &middot; ${c.spoke} of ${SENT_N} outside managers spoke</span></div>`;
+}
+const SENT_EXPLAIN = 'From #trade-discussion within 4 days of the trade; paraphrased and scored by Claude. Score = 100 &times; (sum of the 10 outside managers\' stances) &divide; 10: a strong opinion counts &plusmn;1, milder ones less, a reaction backing someone else less still, silence 0. Managers in the trade are excluded. Yellow = both positive and negative voices carry weight (size = spread of opinions).';
+function tipForSent(t){
+  const st = sentState(t), title = `<div class="tt-title">${t.s} wk${t.w} &mdash; trade chatter</div>`;
+  if(st === 'na') return title + 'Chat sentiment is tracked for 2026 and later trades.';
+  if(st === 'open'){
+    const d = new Date(t.ts + 4 * 864e5);
+    return title + `Discussion window open until ${d.toLocaleDateString(undefined, {month:'short', day:'numeric'})}; sentiment is scored once it closes.`;
+  }
+  if(st === 'unscored') return title + 'Window closed; sentiment not scored yet.';
+  const raw = DATA.sentiment[t.id];
+  if(st === 'none'){
+    const inv = (raw.notes || []).filter(n=> n.inv).map(n=> noteLine(n, t)).join('');
+    return title + 'No outside manager weighed in on this trade in #trade-discussion within 4 days.' + (inv ? `<div class="tt-list">${inv}</div>` : '');
+  }
+  const r = sentRec(t);
+  const ordered = r.notes.slice().sort((x, y)=> (x.inv ? 1 : 0) - (y.inv ? 1 : 0));
+  return title + `<div class="tt-list" style="margin-top:2px;padding-top:4px">${sentSide(t.a, r.a)}${sentSide(t.b, r.b)}</div>
+    <div class="tt-list">${ordered.map(n=> noteLine(n, t)).join('')}</div>
+    <div class="tt-more">${SENT_EXPLAIN}</div>`;
+}
+function tipForOwnerSent(name, totals){
+  const rows = totals.byTrade.filter(e=> e.sent).sort((a,b)=> b.s - a.s || b.w - a.w);
+  if(!rows.length) return `<div class="tt-title">${name} &mdash; trade chatter</div>No discussed 2026+ trades in this filter.`;
+  return `<div class="tt-title">${name} &mdash; trade chatter by trade</div><div class="tt-list">${rows.map(e=>
+    `<div class="tt-trade">${sentDot(e.sent)} ${e.s} wk${e.w} &mdash; ${e.other}: ${sentLabel(e.sent)} <span style="opacity:.75">(${e.sent.s > 0 ? '+' : ''}${Math.round(e.sent.s)} &middot; ${e.sent.spoke} of ${SENT_N} spoke)</span></div>`).join('')}</div>
+    <div class="tt-more">The Chatter column is the average of these scores over discussed trades (trades nobody commented on are left out). Hover the Chatter cell in the trade log for who said what.</div>`;
+}
 function tradeOutcomeBadge(t, side){
-  if(t.prNet == null) return '';
-  const k = classifyOutcome(side === 'a' ? (t.vb - t.va) : (t.va - t.vb), side === 'a' ? t.prNet : -t.prNet);
+  if(t.lga == null || t.lgb == null) return '';
+  const k = classifyOutcome(side === 'a' ? (t.vb - t.va) : (t.va - t.vb), side === 'a' ? lgPerGame(t.lga, t.lgd && t.lgd.a ? t.lgd.a.n : 0) : lgPerGame(t.lgb, t.lgd && t.lgd.b ? t.lgd.b.n : 0));
   const o = k && OUTCOME_BY_KEY[k];
   if(!o) return '';
   return ` <span class="oc-ico" data-tip="${('<b>' + o.icon + ' ' + o.name + '</b><br>' + o.def).replace(/"/g,'&quot;')}">${o.icon}</span>`;
 }
 function tradeGames(t){
-  let g = 0;
-  (t.ag || []).concat(t.bg || []).forEach(x=>{ g = Math.max(g, (x.st || 0) + (x.bn || 0)); });
-  return g;
+  return t.lgw || 0;   // weeks the trade was in effect (the longer of the two sides)
 }
 
 function ordinal(n){
@@ -759,7 +859,7 @@ function renderLog(trades){
     net: t.vb - t.va,
     rankA: (standingFor(t.s, t.a) || {}).r || Infinity,
     rankB: (standingFor(t.s, t.b) || {}).r || Infinity,
-    parG: (t.prNet != null && tradeGames(t) > 0) ? t.prNet / tradeGames(t) : -1e9,
+    lgG: (t.lgNet != null && tradeGames(t) > 0) ? t.lgNet / tradeGames(t) : -1e9,
   }, t));
   // Season and week are linked: sorting by one should break ties on the other in the
   // *same* direction, not always ascending - e.g. "most recent season on top" should also
@@ -777,13 +877,15 @@ function renderLog(trades){
   els.logBody.innerHTML = sorted.map(t=>{
     const netClass = t.net > 0 ? 'net-pos' : (t.net < 0 ? 'net-neg' : '');
     const netStr = (t.net > 0 ? '+' : '') + fmtVal(t.net);
-    const hasPar = t.pra != null && t.prb != null && t.prNet != null;
-    const parNetClass = !hasPar ? '' : (t.prNet > 0 ? 'net-pos' : (t.prNet < 0 ? 'net-neg' : ''));
-    const parNetStr = !hasPar ? '&mdash;' : (t.prNet > 0 ? '+' : '') + fmtVal(t.prNet);
+    const hasPar = t.lga != null && t.lgb != null && t.lgNet != null;
+    const parNetClass = !hasPar ? '' : (t.lgNet > 0 ? 'net-pos' : (t.lgNet < 0 ? 'net-neg' : ''));
+    const parNetStr = !hasPar ? '&mdash;' : (t.lgNet > 0 ? '+' : '') + fmtVal(t.lgNet);
     const G = tradeGames(t);
     const hasParG = hasPar && G > 0;
-    const parGClass = !hasParG ? '' : (t.prNet > 0 ? 'net-pos' : (t.prNet < 0 ? 'net-neg' : ''));
-    const parGStr = !hasParG ? '&mdash;' : (t.prNet > 0 ? '+' : '') + (t.prNet / G).toFixed(2);
+    const parGClass = !hasParG ? '' : (t.lgNet > 0 ? 'net-pos' : (t.lgNet < 0 ? 'net-neg' : ''));
+    const parGStr = !hasParG ? '&mdash;' : (t.lgNet > 0 ? '+' : '') + (t.lgNet / G).toFixed(2);
+    const lgCls = (v)=> v > 0 ? 'net-pos' : (v < 0 ? 'net-neg' : '');
+    const lgStr = (v)=> !hasPar ? '&mdash;' : (v > 0 ? '+' : '') + fmtVal(v);
     return `<tr data-tid="${t.id}">
       <td class="season-tag">${t.s}</td><td class="season-tag">${t.w}</td>
       <td>${t.a}${tradeOutcomeBadge(t, 'a')}</td><td class="num">${finishCellHtml(t.s, t.a)}</td>
@@ -794,34 +896,36 @@ function renderLog(trades){
       <td class="val-tag">${fmtVal(t.vb)}</td>
       <td class="val-tag">${fmtVal(t.tv)}</td>
       <td class="val-tag ${netClass}">${netStr}</td>
-      <td class="val-tag par-cell">${hasPar ? fmtVal(t.pra) : '&mdash;'}</td>
-      <td class="val-tag par-cell">${hasPar ? fmtVal(t.prb) : '&mdash;'}</td>
+      <td class="val-tag par-cell ${hasPar ? lgCls(t.lga) : ''}">${lgStr(t.lga)}</td>
+      <td class="val-tag par-cell ${hasPar ? lgCls(t.lgb) : ''}">${lgStr(t.lgb)}</td>
       <td class="val-tag par-cell ${parNetClass}">${parNetStr}</td>
       <td class="val-tag par-cell par-g ${parGClass}" data-g="${G}">${parGStr}</td>
+      <td class="num sent-cell" data-sent="1">${sentBadges(t)}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="16" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+  }).join('') || '<tr><td colspan="17" style="color:var(--text-3)">No trades in this filter.</td></tr>';
   updateSortIndicators('everyTradeTable', logSort);
   if(typeof renderParMethod === 'function') renderParMethod();
 }
 
 // Trade outcome categories, judged per manager from their own net value (value received - given)
-// and net points above replacement (PAR from what they received - PAR from what they gave up).
-const OUTCOME_MIN_P = 10;  // a trade is a "meh" for a manager when their net PAR is within +/-10 (net value doesn't matter for this cutoff)
+// and their own lineup gain (best lineup with the trade - best lineup without it, summed over the weeks it was live).
+const OUTCOME_MIN_G = 3;  // a trade is a "meh" for a manager when their own lineup gain averages less than 3 points per live week, up or down (net value doesn't matter for this cutoff)
+function lgPerGame(delta, weeks){ return delta == null ? null : (weeks > 0 ? delta / weeks : 0); }
 const OUTCOMES = [
-  {key:'cw',  icon:'\u2705',         name:'Clear Win',  def:'Net value AND net PAR both positive.'},
-  {key:'bw',  icon:'\uD83D\uDD25',  name:'Bold Win',   def:'Net value negative but net PAR positive: gave up trade-chart value, and the players received delivered more points above replacement than the ones given up.'},
-  {key:'meh', icon:'\uD83D\uDE10',  name:'Meh',        def:'Net PAR within \u00B1' + OUTCOME_MIN_P + ' (net value is ignored): basically a wash.'},
-  {key:'tl',  icon:'\uD83D\uDC94',  name:'Tough Loss', def:'Net value positive but net PAR negative: won on trade-chart value, lost on points above replacement.'},
-  {key:'cl',  icon:'\u274C',         name:'Clear Loss', def:'Net value AND net PAR both negative.'},
+  {key:'cw',  icon:'\u2705',         name:'Clear Win',  def:'Net value AND lineup gain both positive: won on the trade chart and the lineup got better.'},
+  {key:'bw',  icon:'\uD83D\uDD25',  name:'Bold Win',   def:'Net value negative but lineup gain positive: gave up trade-chart value, yet the best lineup scored more with the trade than without it.'},
+  {key:'meh', icon:'\uD83D\uDE10',  name:'Meh',        def:'Lineup gain under ' + OUTCOME_MIN_G + ' points per week, up or down (net value is ignored): basically a wash for the lineup.'},
+  {key:'tl',  icon:'\uD83D\uDC94',  name:'Tough Loss', def:'Net value positive but lineup gain negative: won on trade-chart value, but the best lineup scored less with the trade than without it.'},
+  {key:'cl',  icon:'\u274C',         name:'Clear Loss', def:'Net value AND lineup gain both negative.'},
 ];
 const OUTCOME_BY_KEY = {};
 OUTCOMES.forEach(o=> OUTCOME_BY_KEY[o.key] = o);
 function classifyOutcome(v, p){
-  // v = this manager's net value in the trade, p = their net PAR (null = no replacement-level data).
+  // v = this manager's net value in the trade, p = their own lineup gain PER WEEK (null = no lineup data).
   // Returns an OUTCOMES key, or null when it can't be judged (no points data).
   const hasP = p !== null && p !== undefined;
   if(!hasP) return null;
-  if(Math.abs(p) <= OUTCOME_MIN_P) return 'meh';
+  if(Math.abs(p) < OUTCOME_MIN_G) return 'meh';
   let sv = Math.sign(v), sp = Math.sign(p);
   if(sv === 0) sv = sp;   // an exact 0 on one side takes the direction of the other
   if(sp === 0) sp = sv;
@@ -835,7 +939,7 @@ function computeOwnerTotals(trades){
   // source of truth for "net" numbers, shared by the owner-totals table and the graph's
   // node coloring so the two views never disagree.
   const totals = new Map();
-  DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0, fpGiven:0, fpReceived:0, parGiven:0, parReceived:0, parGames:0, byTrade:[], cw:0, bw:0, meh:0, tl:0, cl:0, byClass:{cw:[], bw:[], meh:[], tl:[], cl:[]}}));
+  DATA.managers.forEach(m=>totals.set(m, {trades:0, given:0, received:0, fpGiven:0, fpReceived:0, parNet:0, parGames:0, sentSum:0, sentN:0, byTrade:[], cw:0, bw:0, meh:0, tl:0, cl:0, byClass:{cw:[], bw:[], meh:[], tl:[], cl:[]}}));
   trades.forEach(t=>{
     const a = totals.get(t.a), b = totals.get(t.b);
     a.trades += 1; a.given += t.va; a.received += t.vb;
@@ -845,27 +949,29 @@ function computeOwnerTotals(trades){
       a.fpGiven += t.fpb; a.fpReceived += t.fpa;
       b.fpGiven += t.fpa; b.fpReceived += t.fpb;
     }
-    const hasPar = t.pra != null && t.prb != null;
+    const hasPar = t.lga != null && t.lgb != null;
     const G = tradeGames(t);
+    const Ga = t.lgd && t.lgd.a ? t.lgd.a.n : 0, Gb = t.lgd && t.lgd.b ? t.lgd.b.n : 0;   // each side's own live weeks
     if(hasPar){
-      a.parGiven += t.prb; a.parReceived += t.pra;
-      b.parGiven += t.pra; b.parReceived += t.prb;
-      a.parGames += G; b.parGames += G;
+      a.parNet += t.lga; b.parNet += t.lgb;
+      a.parGames += Ga; b.parGames += Gb;
     }
     // Per-trade contribution toward each side's Net / Fantasy Pts Gained totals, kept so
     // the owner-totals table can show "which trades make up this number" on hover - from
     // t.a's perspective a trade nets (vb-va) in value and (fpa-fpb) in fantasy points; from
     // t.b's perspective it's the mirror image.
-    const ea = {s:t.s, w:t.w, other:t.b, valueNet: t.vb - t.va, fpNet: hasFp ? (t.fpa - t.fpb) : null, parNet: hasPar ? (t.pra - t.prb) : null, g: G, got:t.bg, gave:t.ag};
-    const eb = {s:t.s, w:t.w, other:t.a, valueNet: t.va - t.vb, fpNet: hasFp ? (t.fpb - t.fpa) : null, parNet: hasPar ? (t.prb - t.pra) : null, g: G, got:t.ag, gave:t.bg};
+    const ea = {s:t.s, w:t.w, other:t.b, valueNet: t.vb - t.va, fpNet: hasFp ? (t.fpa - t.fpb) : null, parNet: hasPar ? t.lga : null, g: Ga, got:t.bg, gave:t.ag};
+    const eb = {s:t.s, w:t.w, other:t.a, valueNet: t.va - t.vb, fpNet: hasFp ? (t.fpb - t.fpa) : null, parNet: hasPar ? t.lgb : null, g: Gb, got:t.ag, gave:t.bg};
+    const sr = sentRec(t);
+    if(sr){ ea.sent = sr.a; eb.sent = sr.b; a.sentSum += sr.a.s; a.sentN += 1; b.sentSum += sr.b.s; b.sentN += 1; }
     a.byTrade.push(ea); b.byTrade.push(eb);
     [[a, ea], [b, eb]].forEach(([m, e])=>{
-      const k = classifyOutcome(e.valueNet, e.parNet);
+      const k = classifyOutcome(e.valueNet, lgPerGame(e.parNet, e.g));
       if(k){ m[k] += 1; m.byClass[k].push(e); }
     });
   });
   // avg = (value given + value received) / this manager's trades in the current filter
-  totals.forEach(v=>{ v.net = v.received - v.given; v.fpNet = v.fpReceived - v.fpGiven; v.parNet = v.parReceived - v.parGiven; v.parG = v.parGames > 0 ? v.parNet / v.parGames : -1e9; v.avg = v.trades ? (v.given + v.received) / v.trades : 0; });
+  totals.forEach(v=>{ v.net = v.received - v.given; v.fpNet = v.fpReceived - v.fpGiven; v.parG = v.parGames > 0 ? v.parNet / v.parGames : -1e9; v.sentAvg = v.sentN > 0 ? v.sentSum / v.sentN : -999; v.avg = v.trades ? (v.given + v.received) / v.trades : 0; });
   return totals;
 }
 
@@ -895,16 +1001,16 @@ function renderOwnerTotals(trades){
       <td class="num-right val-tag net-cell ${netClass}">${netStr}</td>
       <td class="num-right val-tag par-cell ${parNetClass}">${parNetStr}</td>
       <td class="num-right val-tag par-cell par-g ${parNetClass}">${r.parGames > 0 ? (r.parNet > 0 ? '+' : '') + (r.parNet / r.parGames).toFixed(2) : '&mdash;'}</td>
+      <td class="num-right val-tag sent-cell" data-sent-owner="1">${r.sentN > 0 ? sentDot({s:r.sentAvg, spoke:1, mixed:false}) + '<span class="sd-num">' + (r.sentAvg > 0 ? '+' : '') + Math.round(r.sentAvg) + '</span>' : '&mdash;'}</td>
       ${OUTCOMES.map(o=>`<td class="val-tag out-cell" data-out="${o.key}">${r[o.key]}</td>`).join('')}
     </tr>`;
-  }).join('') || '<tr><td colspan="13" style="color:var(--text-3)">No trades in this filter.</td></tr>';
+  }).join('') || '<tr><td colspan="14" style="color:var(--text-3)">No trades in this filter.</td></tr>';
 
   if(rows.length){
     const totalGiven = rows.reduce((s,r)=>s+r.given,0);
     const totalReceived = rows.reduce((s,r)=>s+r.received,0);
-    const totalParGiven = rows.reduce((s,r)=>s+r.parGiven,0);
-    const totalParReceived = rows.reduce((s,r)=>s+r.parReceived,0);
-    const totalParGames = rows.reduce((s,r)=>s+r.parGames,0) / 2;  // each trade is counted once per side
+    const totalPar = rows.reduce((s,r)=>s+r.parNet,0);
+    const totalParGames = rows.reduce((s,r)=>s+r.parGames,0);
     els.ownerTotalsFoot.innerHTML = `<tr>
       <td>All owners</td>
       <td class="num-right">${trades.length}</td>
@@ -912,7 +1018,8 @@ function renderOwnerTotals(trades){
       <td class="num-right">${fmtVal(totalReceived)}</td>
       <td class="num-right">${trades.length ? fmtVal((totalGiven + totalReceived) / trades.length) : '0'}</td>
       <td class="num-right">${fmtVal(totalReceived-totalGiven)}</td>
-      <td class="num-right">${fmtVal(totalParReceived-totalParGiven)}</td>
+      <td class="num-right">${(totalPar > 0 ? '+' : '') + fmtVal(totalPar)}</td>
+      <td class="num-right">${totalParGames > 0 ? (totalPar > 0 ? '+' : '') + (totalPar / totalParGames).toFixed(2) : '&mdash;'}</td>
       <td class="num-right">&mdash;</td>
       ${OUTCOMES.map(o=>`<td class="out-cell" style="border-bottom:none;cursor:default">${rows.reduce((s,r)=>s+r[o.key],0)}</td>`).join('')}
     </tr>`;
@@ -1174,7 +1281,7 @@ function tipForNode(d){
   const hasFp = d.parNet !== null && d.parNet !== undefined && !Number.isNaN(d.parNet);
   const fpNetStr = hasFp ? (d.parNet > 0 ? '+' : '') + fmtVal(d.parNet) : '&mdash;';
   return `<div class="tt-title">${d.id}</div><b>${d.deg.count}</b> trades &middot; <b>${fmtVal(d.deg.value)}</b> value pts total
-    <div class="tt-list">Trade partners (current filter): <b>${d.partners}</b><br>Net trade value: <b>${netStr}</b><br>Net PAR gained: <b>${fpNetStr}</b></div>`;
+    <div class="tt-list">Trade partners (current filter): <b>${d.partners}</b><br>Net trade value: <b>${netStr}</b><br>Lineup &Delta; gained: <b>${fpNetStr}</b></div>`;
 }
 function fpAssetLine(a){
   if(a.fp === undefined || a.fp === null) return `<div class="tt-trade">${abbrevPlayer(a.n)} &mdash; no fantasy data</div>`;
@@ -1221,7 +1328,7 @@ function signedNet(v){
 function tipForOutcomeHeader(key){
   const o = OUTCOME_BY_KEY[key];
   return `<div class="tt-title">${o.icon} ${o.name}</div>${o.def}
-    <div class="tt-more" style="margin-top:5px">Judged per manager per trade. Net value = value received &minus; given; net PAR = points above replacement from players received &minus; from players given up. A trade is a "meh" when net PAR is within &plusmn;${OUTCOME_MIN_P} (net value doesn't matter for that cutoff); otherwise the signs of net value and net PAR decide. Column counts the trades; hover a number to list them.</div>`;
+    <div class="tt-more" style="margin-top:5px">Judged per manager per trade. Net value = value received &minus; given; lineup &Delta; = the manager's best possible lineup with the trade minus without it, over the weeks it was live. A trade is a "meh" when the lineup &Delta; averages under ${OUTCOME_MIN_G} points per live week, up or down (net value doesn't matter for that cutoff); otherwise the signs of net value and lineup &Delta; decide. Column counts the trades; hover a number to list them.</div>`;
 }
 function playerNames(list){
   return (list || []).map(x=>`<span class="tt-p">${abbrevPlayer(x.n)}</span>`).join(', ') || '&mdash;';
@@ -1232,7 +1339,7 @@ function tipForOutcomeCell(name, totals, key){
   const n = list.length;
   if(!n) return `<div class="tt-title">${name} &mdash; ${o.icon} ${o.name}</div>No trades in this category.`;
   const lines = list.map(e=>
-    `<div class="tt-trade">${e.s} wk${e.w} &mdash; ${e.other}: Value ${signedNet(e.valueNet)} &middot; PAR ${e.parNet === null ? '<span style="opacity:.6">n/a</span>' : signedNet(e.parNet)}
+    `<div class="tt-trade">${e.s} wk${e.w} &mdash; ${e.other}: Value ${signedNet(e.valueNet)} &middot; Lineup &Delta; ${e.parNet === null ? '<span style="opacity:.6">n/a</span>' : signedNet(e.parNet)}
       <div class="tt-pl">Got: ${playerNames(e.got)}</div><div class="tt-pl">Gave: ${playerNames(e.gave)}</div></div>`
   ).join('');
   return `<div class="tt-title">${name} &mdash; ${o.icon} ${o.name} (${n})</div>
@@ -1395,61 +1502,54 @@ function renderPlayers(){
   document.getElementById('playersBody').addEventListener('mouseleave', ()=> hideTip());
 })();
 
-// ---------- Points above replacement (PAR): tooltips + method table ----------
-// Registered before the log's / owner table's own handlers (and stopping them) so a hovered PAR
-// cell isn't immediately hidden again by the Fantasy-Pts handlers.
-function replFor(season, pos){
-  const r = DATA.replacement && DATA.replacement[season];
-  return r && r.pos && r.pos[pos] ? r.pos[pos] : null;
-}
-function parAssetLine(a, season){
-  if(a.par === undefined || a.par === null) return `<div class="tt-trade">${abbrevPlayer(a.n)} &mdash; n/a</div>`;
-  const st = a.st || 0;
-  if(!st) return `<div class="tt-trade">${abbrevPlayer(a.n)} &mdash; <i>never started since the trade</i> &mdash; ${signedNet(0)}</div>`;
-  const pos = String(a.n).split(' ')[0];
-  const rf = replFor(season, pos);
-  const cut = rf ? ` (${pos}${rf.rank}: ${rf.who})` : '';
-  return `<div class="tt-trade"><span class="tt-p">${abbrevPlayer(a.n)}</span> &mdash; ${fmtVal(a.fp)} pts &minus; ${a.rp} repl. PPG${cut} &times; ${st} started = ${signedNet(a.par)}</div>`;
+// ---------- Lineup gain (best lineup with vs. without the trade): tooltips + method note ----------
+// Registered before the log's / owner table's own handlers (and stopping them) so a hovered
+// lineup cell isn't immediately hidden again by the Fantasy-Pts handlers.
+function lgSideBlock(tc, who, rec, v, other){
+  if(!rec) return `<div class="tt-list" style="color:${tc(who)}"><b>${who}</b> &mdash; <span style="opacity:.7">no completed week with the trade in effect</span></div>`;
+  const wk = rec.wk || [];
+  const best = wk.reduce((m,x)=> x[1] > m[1] ? x : m, wk[0]);
+  const worst = wk.reduce((m,x)=> x[1] < m[1] ? x : m, wk[0]);
+  const mine = rec.pl || [];
+  const moved = (p)=>{
+    if(!p.x) return '';
+    const w = p.x.w, how = p.x.k;
+    if(p.r) return how === 'dropped' ? `dropped by ${who} after wk${w}` : (how === 'traded' ? `traded on by ${who} after wk${w}` : `left ${who}&rsquo;s roster after wk${w}`);
+    return how === 'dropped' ? `${other} dropped him after wk${w}` : (how === 'traded' ? `${other} traded him on after wk${w}` : `left ${other}&rsquo;s roster after wk${w}`);
+  };
+  const plLine = (p)=> `<span><span class="tt-p">${abbrevPlayer(p.n)}</span> <b class="${p.d > 0 ? 'net-pos' : (p.d < 0 ? 'net-neg' : '')}">${(p.d > 0 ? '+' : '') + p.d.toFixed(1)}</b> <span style="opacity:.65">(${p.s} wk${p.s!==1?'s':''} in lineup${p.x ? '; ' + moved(p) + (p.r ? '' : ', still counted as kept') : ''})</span></span>`;
+  const got = mine.filter(p=> p.r).map(plLine).join('<br>'), gave = mine.filter(p=> !p.r).map(plLine).join('<br>');
+  const plBlock = mine.length ? `<div class="tt-pl" style="margin-top:3px"><b>Got:</b><br>${got || '&mdash;'}</div><div class="tt-pl"><b>Gave up</b> <span style="opacity:.65">(what losing them cost the lineup)</span><b>:</b><br>${gave || '&mdash;'}</div>` : '';
+  const weeks = wk.map(x=> `<span style="white-space:nowrap">wk${x[0]} <b class="${x[1] > 0 ? 'net-pos' : (x[1] < 0 ? 'net-neg' : '')}">${(x[1] > 0 ? '+' : '') + x[1].toFixed(1)}</b></span>`).join(' &middot; ');
+  return `<div class="tt-list" style="color:${tc(who)}">
+      <b>${who}</b> &mdash; ${signedNet(v)} over ${rec.n} wk${rec.n!==1?'s':''} (wk${rec.w0}${rec.w1 !== rec.w0 ? '&ndash;' + rec.w1 : ''})
+      <div class="tt-pl">Best lineup with the trade: <b>${fmtVal(rec.on)}</b> &middot; without: <b>${fmtVal(rec.off)}</b></div>
+      ${plBlock}
+      <div class="tt-pl" style="opacity:.9">${weeks}</div>
+    </div>`;
 }
 function tipForParTrade(t){
-  if(t.pra == null || t.prb == null) return `<div class="tt-title">${t.s} wk${t.w}</div>No replacement-level data for this trade.`;
+  if(t.lga == null || t.lgb == null) return `<div class="tt-title">${t.s} wk${t.w}</div>No lineup data for this trade yet &mdash; its first counted week hasn't been played.`;
   const tc = tooltipColorScale();
-  return `<div class="tt-title">${t.s} wk${t.w} &mdash; points above replacement</div>
-    <div class="tt-list" style="margin-top:0;padding-top:0;border-top:none;color:${tc(t.a)}">
-      <b>${t.a}</b> received &mdash; ${signedNet(t.pra)} total
-      ${t.bg.map(a=>parAssetLine(a, t.s)).join('')}
-    </div>
-    <div class="tt-list" style="color:${tc(t.b)}">
-      <b>${t.b}</b> received &mdash; ${signedNet(t.prb)} total
-      ${t.ag.map(a=>parAssetLine(a, t.s)).join('')}
-    </div>
-    <div class="tt-net"><span class="k">Pts above repl.</span>${winnerChip(tc, t.a, t.b, t.pra - t.prb)}</div>
-    <div class="tt-net"><span class="k">Per game</span>${tradeGames(t) > 0 ? signedNet(+((t.pra - t.prb) / tradeGames(t)).toFixed(2)) + ` for ${t.a} &middot; ${tradeGames(t)} wk${tradeGames(t)!==1?'s':''} live` : '<span style="opacity:.6">n/a</span>'}</div>
-    <div class="tt-more">points while started &minus; replacement PPG &times; games started. Replacement PPG = the PPG of the cutoff-ranked player at that position that season; see &ldquo;How points above replacement is calculated&rdquo; below the table.</div>`;
+  const d = t.lgd || {};
+  const G = tradeGames(t);
+  return `<div class="tt-title">${t.s} wk${t.w} &mdash; best lineup with vs. without the trade</div>
+    ${lgSideBlock(tc, t.a, d.a, t.lga, t.b)}
+    ${lgSideBlock(tc, t.b, d.b, t.lgb, t.a)}
+    <div class="tt-net"><span class="k">Net &Delta;</span>${winnerChip(tc, t.a, t.b, t.lga - t.lgb)}</div>
+    <div class="tt-net"><span class="k">Per week</span>${G > 0 ? signedNet(+((t.lga - t.lgb) / G).toFixed(2)) + ` for ${t.a} &middot; ${G} wk${G!==1?'s':''} live` : '<span style="opacity:.6">n/a</span>'}</div>
+    <div class="tt-more">Each week: best possible lineup the roster could start (bench included) with the trade, minus the best lineup after undoing the trade. Player figures split that gain between the players in the deal (each one&rsquo;s average effect on the best lineup, so they add up to the total). Sides need not cancel. See &ldquo;How lineup &Delta; is calculated&rdquo; below the table.</div>`;
 }
 function tipForOwnerPar(name, totals){
   const all = totals.byTrade.filter(e=> e.parNet !== null && e.parNet !== undefined).sort((a,b)=> b.s - a.s || b.w - a.w);
-  if(!all.length) return `<div class="tt-title">${name} &mdash; Pts above replacement gained</div>No replacement-level data for these trades.`;
+  if(!all.length) return `<div class="tt-title">${name} &mdash; Lineup &Delta;</div>No lineup data for these trades yet.`;
   const lines = all.map(e=> `<div class="tt-trade">${e.s} wk${e.w} &mdash; ${e.other}: ${signedNet(e.parNet)}${e.g > 0 ? ` <span style="opacity:.75">&middot; ${e.g} wk${e.g!==1?'s':''} &middot; ${(e.parNet / e.g > 0 ? '+' : '') + (e.parNet / e.g).toFixed(2)}/G</span>` : ''}</div>`).join('');
-  return `<div class="tt-title">${name} &mdash; pts above replacement gained, by trade</div><div class="tt-list">${lines}</div>
-    <div class="tt-more">PAR/G = total net PAR &divide; total weeks the trades were live</div>`;
+  return `<div class="tt-title">${name} &mdash; lineup &Delta;, by trade</div><div class="tt-list">${lines}</div>
+    <div class="tt-more">&Delta;/G = total lineup gain &divide; total weeks the trades were live for this owner</div>`;
 }
 function renderParMethod(){
-  const box = document.getElementById('parMethod'), body = document.getElementById('parBody');
-  const R = DATA.replacement;
-  if(!box || !body || !R || !Object.keys(R).length){ if(box) box.style.display = 'none'; return; }
-  box.style.display = '';
-  body.innerHTML = Object.keys(R).sort((a,b)=> b - a).map(season=>{
-    const r = R[season];
-    const cells = ['QB','RB','WR','TE','K','DEF'].map(pos=>{
-      const p = r.pos && r.pos[pos];
-      if(!p) return '<td class="par-pos">&mdash;</td>';
-      const tip = `<div class="tt-title">${season} ${pos} replacement</div>Cutoff rank <b>${pos}${p.rank}</b> = ${p.st} started per week + ${p.buf} bench depth (${r.teams} teams).<br>Player at the cutoff: <b>${p.who}</b> &mdash; ${p.ppg} pts/game over ${p.gp} games.<br>${p.n} ${pos}s ranked (min. ${r.minGp} games).`;
-      return `<td class="par-pos" data-tip="${tip.replace(/"/g,'&quot;')}">${p.rank} &middot; ${p.ppg.toFixed(2)}</td>`;
-    }).join('');
-    const partial = r.weeks < r.regWeeks ? ` <span style="opacity:.7">(through wk ${r.weeks})</span>` : '';
-    return `<tr><td>${season}${partial}</td><td class="num-right">${r.teams}</td>${cells}</tr>`;
-  }).join('');
+  const box = document.getElementById('parMethod');
+  if(box) box.style.display = '';
 }
 (function(){
   const logCell = (ev)=>{
@@ -1463,13 +1563,12 @@ function renderParMethod(){
     return totals ? tipForOwnerPar(row.dataset.owner, totals) : null;
   };
   const headTip = (ev)=>{ const th = ev.target.closest('th.par-col[data-tip]'); return th ? `<div>${th.dataset.tip}</div>` : null; };
-  const methodTip = (ev)=>{ const td = ev.target.closest('td.par-pos[data-tip]'); return td ? td.dataset.tip : null; };
   [[els.logBody, logCell], [els.ownerTotalsBody, ownCell], [document.querySelector('#everyTradeTable thead'), headTip],
-   [document.querySelector('#ownerTotalsTable thead'), headTip], [document.getElementById('parBody'), methodTip]].forEach(([el, fn])=>{
+   [document.querySelector('#ownerTotalsTable thead'), headTip]].forEach(([el, fn])=>{
     if(!el) return;
-    el.addEventListener('mousemove', (ev)=>{ const h = fn(ev); if(h){ showTip(ev, h); ev.stopImmediatePropagation(); } else if(el.id === 'parBody' || el.tagName === 'THEAD'){ hideTip(); } });
+    el.addEventListener('mousemove', (ev)=>{ const h = fn(ev); if(h){ showTip(ev, h); ev.stopImmediatePropagation(); } else if(el.tagName === 'THEAD'){ hideTip(); } });
     el.addEventListener('click', (ev)=>{ const h = fn(ev); if(h){ showTip(ev, h); ev.stopPropagation(); } });
-    if(el.id === 'parBody' || el.tagName === 'THEAD') el.addEventListener('mouseleave', ()=> hideTip());
+    if(el.tagName === 'THEAD') el.addEventListener('mouseleave', ()=> hideTip());
   });
 })();
 // ---------- PPG rank hover (trade log + Players tab) ----------
@@ -1518,7 +1617,17 @@ function tipForPlayerRanks(full, recs){
     const rec = ASSET_REG[+ln.dataset.aid];
     return rec ? tipForRanks(rec) : null;
   };
-  [[els.logBody, tipFor], [document.getElementById('playersBody'), (ev)=> tipFor(ev) || lineTip(ev)]].forEach(([el, fn])=>{
+  const logTip = (ev)=>{
+    const c = ev.target.closest('.sent-cell[data-sent]');
+    if(c){ const row = c.closest('tr[data-tid]'); const t = row && lastTradeById[row.dataset.tid]; return t ? tipForSent(t) : null; }
+    return tipFor(ev);
+  };
+  const ownTip = (ev)=>{
+    const c = ev.target.closest('.sent-cell[data-sent-owner]'); if(!c) return null;
+    const row = c.closest('tr[data-owner]'); const totals = row && lastOwnerTotals && lastOwnerTotals.get(row.dataset.owner);
+    return totals ? tipForOwnerSent(row.dataset.owner, totals) : null;
+  };
+  [[els.logBody, logTip], [els.ownerTotalsBody, ownTip], [document.getElementById('playersBody'), (ev)=> tipFor(ev) || lineTip(ev)]].forEach(([el, fn])=>{
     if(!el) return;
     el.addEventListener('mousemove', (ev)=>{ const h = fn(ev); if(h){ showTip(ev, h); ev.stopImmediatePropagation(); } });
     el.addEventListener('click', (ev)=>{ const h = fn(ev); if(h){ showTip(ev, h); ev.stopPropagation(); } });
@@ -1605,9 +1714,11 @@ els.ownerTotalsBody.addEventListener('click', (ev)=>{
   ev.stopPropagation();
 });
 
-fetch('data.json?_=' + Date.now())
-  .then(r => r.json())
-  .then(json => { DATA = json; initFromData(); renderFooterCount(); render(); })
+Promise.all([
+    fetch('data.json?_=' + Date.now()).then(r => r.json()),
+    fetch('sentiment.json?_=' + Date.now()).then(r => r.ok ? r.json() : {}).catch(() => ({}))
+  ])
+  .then(([json, sent]) => { DATA = json; DATA.sentiment = sent || {}; initFromData(); renderFooterCount(); render(); })
   .catch(err => {
     document.querySelector('.wrap').insertAdjacentHTML('afterbegin',
       '<div style="padding:16px;border:1px solid var(--border);border-radius:10px;color:var(--text-2)">Could not load data.json (' + err + '). If you just set this page up, make sure update_league.py has run at least once and data.json sits next to this index.html.</div>');

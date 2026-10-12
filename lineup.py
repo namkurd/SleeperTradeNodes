@@ -153,29 +153,12 @@ class _Season:
         return self._bracket is None or roster_id in self._bracket
 
 
-SHAPLEY_MAX_PARTS = 9
-
-
-def _shapley(n, v):
-    """Shapley value of each of n 'trade parts' for the set function v(mask)."""
-    from math import factorial
-    out = [0.0] * n
-    for i in range(n):
-        bit = 1 << i
-        for mask in range(1 << n):
-            if mask & bit:
-                continue
-            k = bin(mask).count("1")
-            w = factorial(k) * factorial(n - k - 1) / factorial(n)
-            out[i] += w * (v[mask | bit] - v[mask])
-    return out
-
-
 def side_value(S, roster_id, received, given, start_week, names=None, other_roster=None):
     """Lineup Δ for the manager of roster_id who received `received` pids and gave `given` pids.
-    Also splits the total over the individual players of the trade (Shapley split of the weekly
-    best-lineup gain, so the parts add up to the total exactly): a received player's share is what
-    he added to the best lineup, a given-up player's share is (minus) what he would have added."""
+    Also reports a per-player effect (leave-one-out): a received player's figure is how much the best
+    lineup drops when just he is removed (everything else as is); a given-up player's figure is minus
+    what the best lineup would gain if just he were put back.  With overlapping players the figures
+    need not add up to the total."""
     names = names or {}
     cap = MAX_WEEK if S.made_playoffs(roster_id) else S.reg_end
     cap = min(cap, S.done)
@@ -183,7 +166,6 @@ def side_value(S, roster_id, received, given, start_week, names=None, other_rost
     tot_with = tot_without = 0.0
     weeks = []
     phi, started = {}, {}
-    detail_ok = True
     end = None
     for wk in range(start_week, cap + 1):
         e = S.roster(wk, roster_id)
@@ -194,7 +176,6 @@ def side_value(S, roster_id, received, given, start_week, names=None, other_rost
             break                      # none of the players he received is still on his roster
         base = have - rec
         parts = [(p, True) for p in sorted(have & rec)] + [(p, False) for p in sorted(giv)]   # (pid, is_received)
-        n = len(parts)
         pool = lambda pids: S.pool(wk, pids)
         a, used_with = best_lineup(S.slots, pool(have))
         b, used_without = best_lineup(S.slots, pool(base | giv))
@@ -202,37 +183,29 @@ def side_value(S, roster_id, received, given, start_week, names=None, other_rost
         tot_without += b
         weeks.append([wk, round(a - b, 1)])
         end = wk
-        if n <= SHAPLEY_MAX_PARTS:
-            v = [0.0] * (1 << n)
-            for mask in range(1 << n):
-                roster = set(base)
-                for i, (p, is_rec) in enumerate(parts):
-                    done = bool(mask & (1 << i))
-                    if (is_rec and done) or (not is_rec and not done):
-                        roster.add(p)
-                v[mask] = best_lineup(S.slots, pool(roster))[0]
-            for (p, is_rec), x in zip(parts, _shapley(n, v)):
-                phi[p] = phi.get(p, 0.0) + x
-                if (is_rec and p in used_with) or (not is_rec and p in used_without):
-                    started[p] = started.get(p, 0) + 1
-        else:
-            detail_ok = False
+        # leave-one-out effect of each part of the deal: best lineup as it really was (all of the trade
+        # in place) minus the best lineup with only that player's part undone.  Overlapping players
+        # (two RBs for one slot) can make these not add up to the weekly total.
+        for p, is_rec in parts:
+            alt = (have - {p}) if is_rec else (have | {p})
+            phi[p] = phi.get(p, 0.0) + (a - best_lineup(S.slots, pool(alt))[0])
+            if (is_rec and p in used_with) or (not is_rec and p in used_without):
+                started[p] = started.get(p, 0) + 1
     if not weeks:
         return None
     out = {"d": round(tot_with - tot_without, 1), "on": round(tot_with, 1), "off": round(tot_without, 1),
            "w0": start_week, "w1": end, "n": len(weeks), "wk": weeks}
-    if detail_ok:
-        pl = []
-        for p in sorted(phi, key=lambda q: -abs(phi[q])):
-            row = {"n": names.get(p, p), "d": round(phi[p], 1), "s": started.get(p, 0), "r": 1 if p in rec else 0}
-            try:
-                dep = S.departure(roster_id if p in rec else other_roster, p, start_week, cap) if (p in rec or other_roster) else None
-            except Exception:  # noqa: BLE001 - departure notes are informational only
-                dep = None
-            if dep:
-                row["x"] = dep
-            pl.append(row)
-        out["pl"] = pl
+    pl = []
+    for p in sorted(phi, key=lambda q: -abs(phi[q])):
+        row = {"n": names.get(p, p), "d": round(phi[p], 1), "s": started.get(p, 0), "r": 1 if p in rec else 0}
+        try:
+            dep = S.departure(roster_id if p in rec else other_roster, p, start_week, cap) if (p in rec or other_roster) else None
+        except Exception:  # noqa: BLE001 - departure notes are informational only
+            dep = None
+        if dep:
+            row["x"] = dep
+        pl.append(row)
+    out["pl"] = pl
     return out
 
 

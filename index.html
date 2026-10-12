@@ -77,6 +77,8 @@
   .segmented button:hover{color:var(--text);}
 
   .seasons{display:flex; flex-wrap:wrap; gap:6px;}
+  .graph-col{display:flex; flex-direction:column; gap:10px; min-width:0;}
+  .season-slot{padding:0 2px;}
   .chip{
     appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--text-2);
     font-family:var(--font-mono); font-size:12px; font-weight:500; padding:6px 10px; border-radius:999px;
@@ -166,28 +168,33 @@
   #everyTradeTable td.when b{color:var(--text-2); font-weight:500;}
   #everyTradeTable td.mgr{white-space:nowrap; padding-left:7px;}
   #everyTradeTable td.got{padding-right:6px;}
-  /* column sections: players | trade value | lineup delta | chatter - tinted bands + heavy dividers */
-  #everyTradeTable{--g-val:#4f8fdd; --g-lu:#e0912f; --g-line:color-mix(in srgb, var(--text-3) 75%, transparent);}
+  /* column sections: managers | players | trade value | lineup delta | chatter - tinted bands + heavy dividers */
+  #everyTradeTable{--g-man:#9a7be0; --g-pl:#2fa9b8; --g-val:#4f8fdd; --g-lu:#e0912f; --g-ch:#d46b9f; --g-line:color-mix(in srgb, var(--text-3) 75%, transparent);}
   #everyTradeTable th, #everyTradeTable td{white-space:nowrap;}
   #everyTradeTable td.got{white-space:normal;}
   #everyTradeTable th .sort-arrow{min-width:0; margin-left:1px; width:8px; overflow:visible;}
   #everyTradeTable thead th.grp{font-weight:700; letter-spacing:1px; padding:5px 4px; border-bottom:none; border-top:3px solid; text-align:center;}
+  #everyTradeTable thead th.grp-man{color:var(--g-man); border-top-color:var(--g-man); background:color-mix(in srgb, var(--g-man) 16%, var(--surface));}
+  #everyTradeTable tbody td:nth-child(n+2):nth-child(-n+5){background:color-mix(in srgb, var(--g-man) 7%, transparent);}
+  #everyTradeTable thead tr:nth-child(2) th:nth-child(n+1):nth-child(-n+4){background:color-mix(in srgb, var(--g-man) 9%, var(--surface));}
+  #everyTradeTable thead th.grp-pl{color:var(--g-pl); border-top-color:var(--g-pl); background:color-mix(in srgb, var(--g-pl) 16%, var(--surface));}
+  #everyTradeTable tbody td:nth-child(n+6):nth-child(-n+7){background:color-mix(in srgb, var(--g-pl) 7%, transparent);}
+  #everyTradeTable thead tr:nth-child(2) th:nth-child(n+5):nth-child(-n+6){background:color-mix(in srgb, var(--g-pl) 9%, var(--surface));}
   #everyTradeTable thead th.grp-val{color:var(--g-val); border-top-color:var(--g-val); background:color-mix(in srgb, var(--g-val) 16%, var(--surface));}
-  #everyTradeTable thead th.grp-lu{color:var(--g-lu); border-top-color:var(--g-lu); background:color-mix(in srgb, var(--g-lu) 16%, var(--surface));}
-  /* body cells */
   #everyTradeTable tbody td:nth-child(n+8):nth-child(-n+11){background:color-mix(in srgb, var(--g-val) 7%, transparent);}
+  #everyTradeTable thead tr:nth-child(2) th:nth-child(n+7):nth-child(-n+10){background:color-mix(in srgb, var(--g-val) 9%, var(--surface));}
+  #everyTradeTable thead th.grp-lu{color:var(--g-lu); border-top-color:var(--g-lu); background:color-mix(in srgb, var(--g-lu) 16%, var(--surface));}
   #everyTradeTable tbody td:nth-child(n+12):nth-child(-n+16){background:color-mix(in srgb, var(--g-lu) 7%, transparent);}
-  #everyTradeTable tbody tr:hover td:nth-child(n+8){background:var(--surface-2);}
-  /* sub-header cells (second header row) */
-  #everyTradeTable thead tr:nth-child(2) th:nth-child(-n+4){background:color-mix(in srgb, var(--g-val) 9%, var(--surface));}
-  #everyTradeTable thead tr:nth-child(2) th:nth-child(n+5){background:color-mix(in srgb, var(--g-lu) 9%, var(--surface));}
-  /* dividers: before players (6), value (8), lineup (12), chatter (17) */
-  #everyTradeTable tbody td:nth-child(6){border-left:1px solid var(--border);}
-  #everyTradeTable tbody td:nth-child(8), #everyTradeTable tbody td:nth-child(12), #everyTradeTable tbody td:nth-child(17){border-left:2px solid var(--g-line);}
-  #everyTradeTable thead th.grp-val, #everyTradeTable thead tr:nth-child(2) th:nth-child(1),
-  #everyTradeTable thead th.grp-lu,  #everyTradeTable thead tr:nth-child(2) th:nth-child(5),
-  #everyTradeTable thead tr:first-child th:last-child{border-left:2px solid var(--g-line);}
-  #everyTradeTable thead tr:first-child th:nth-child(6){border-left:1px solid var(--border);}
+  #everyTradeTable thead tr:nth-child(2) th:nth-child(n+11):nth-child(-n+15){background:color-mix(in srgb, var(--g-lu) 9%, var(--surface));}
+  #everyTradeTable thead th.grp-ch{color:var(--g-ch); border-top-color:var(--g-ch); background:color-mix(in srgb, var(--g-ch) 16%, var(--surface));}
+  #everyTradeTable tbody td:nth-child(n+17):nth-child(-n+17){background:color-mix(in srgb, var(--g-ch) 7%, transparent);}
+  #everyTradeTable thead tr:nth-child(2) th:nth-child(n+16):nth-child(-n+16){background:color-mix(in srgb, var(--g-ch) 9%, var(--surface));}
+  #everyTradeTable tbody tr:hover td:nth-child(n+2){background:var(--surface-2);}
+  #everyTradeTable tbody td:nth-child(7){border-left:1px solid var(--border);}
+  /* dividers before managers (2), players (6), value (8), lineup (12), chatter (17) */
+  #everyTradeTable tbody td:nth-child(2), #everyTradeTable tbody td:nth-child(6), #everyTradeTable tbody td:nth-child(8), #everyTradeTable tbody td:nth-child(12), #everyTradeTable tbody td:nth-child(17){border-left:2px solid var(--g-line);}
+  #everyTradeTable thead th.grp, #everyTradeTable thead tr:nth-child(2) th:nth-child(1), #everyTradeTable thead tr:nth-child(2) th:nth-child(5),
+  #everyTradeTable thead tr:nth-child(2) th:nth-child(7), #everyTradeTable thead tr:nth-child(2) th:nth-child(11), #everyTradeTable thead tr:nth-child(2) th:nth-child(16){border-left:2px solid var(--g-line);}
   .sent-cell{cursor:help; white-space:nowrap; overflow:visible !important;}
   .sent-cell svg.sd, .tt-trade svg.sd{display:inline-block; vertical-align:middle; flex:none;}
   .sent-cell svg.sd{margin:-6px 0;}
@@ -325,10 +332,9 @@
     <button class="tab" type="button" data-view="players" aria-pressed="false">Players</button>
   </div>
 
-  <div class="seasons" id="seasonChips" role="group" aria-label="Season filter"></div>
-
 <div id="viewNetwork" style="display:flex; flex-direction:column; gap:14px;">
   <div class="layout">
+    <div class="graph-col">
     <div class="panel graph-panel">
       <svg id="graph"></svg>
       <div class="legend" id="legend"></div>
@@ -336,6 +342,8 @@
         <strong>No trades yet</strong>
         <span>This season hasn't had a trade matching the current filter.</span>
       </div>
+    </div>
+    <div class="season-slot" id="seasonSlotNet"><div class="seasons" id="seasonChips" role="group" aria-label="Season filter"></div></div>
     </div>
 
     <div class="side">
@@ -383,22 +391,24 @@
         <h3 class="log-subhead">Every trade<select id="tradeManagerFilter" class="mgr-filter"><option value="">All managers</option></select><span id="tradeManagerFilterCount"></span></h3>
         <table class="log" id="everyTradeTable">
           <colgroup>
-            <col style="width:62px"><col style="width:82px"><col style="width:34px"><col style="width:82px"><col style="width:34px"><col><col><col style="width:40px"><col style="width:40px"><col style="width:42px"><col style="width:42px"><col style="width:42px"><col style="width:42px"><col style="width:42px"><col style="width:42px"><col style="width:44px"><col style="width:74px">
+            <col style="width:72px"><col style="width:82px"><col style="width:34px"><col style="width:82px"><col style="width:34px"><col><col><col style="width:40px"><col style="width:40px"><col style="width:42px"><col style="width:42px"><col style="width:42px"><col style="width:42px"><col style="width:42px"><col style="width:42px"><col style="width:44px"><col style="width:74px">
           </colgroup>
           <thead>
           <tr class="grp-row">
             <th rowspan="2" class="sortable" data-key="s"><span class="th-label">Trade</span><span class="sort-arrow"></span></th>
-            <th rowspan="2" class="sortable" data-key="a"><span class="th-label">Mgr A</span><span class="sort-arrow"></span></th>
-            <th rowspan="2" class="sortable num" data-key="rankA"><span class="th-label">Fin</span><span class="sort-arrow"></span></th>
-            <th rowspan="2" class="sortable" data-key="b"><span class="th-label">Mgr B</span><span class="sort-arrow"></span></th>
-            <th rowspan="2" class="sortable num" data-key="rankB"><span class="th-label">Fin</span><span class="sort-arrow"></span></th>
-            <th rowspan="2" data-tip="Players Mgr. A received (with their trade value).">A Got</th>
-            <th rowspan="2" data-tip="Players Mgr. B received (with their trade value).">B Got</th>
+            <th colspan="4" class="grp grp-man" data-tip="The two managers in the trade and where each finished the season (Fin).">Managers</th>
+            <th colspan="2" class="grp grp-pl" data-tip="Players each manager received, with their trade value.">Players Got</th>
             <th colspan="4" class="grp grp-val" data-tip="Trade-chart value: what each manager received, the total moved, and Net Value (A) = value A received minus value A gave.">Trade Value</th>
             <th colspan="5" class="grp grp-lu par-col" data-tip="Lineup &Delta;: the best possible lineup each roster could have started each week WITH the trade minus the best lineup WITHOUT it, summed over the weeks the trade was live. &Delta;/G divides each manager's total by their own live weeks.">Lineup &Delta;</th>
-            <th rowspan="2" class="num par-col" data-tip="Chatter toward each side of the trade (Mgr. A | Mgr. B), from the 10 managers outside the trade, in the 4 days after a 2026+ trade. Green = positive, red = negative, yellow = strongly mixed; circle size = strength (yellow: spread of opinions). Hollow = nobody weighed in. Hover for who said what."><span class="th-label">Chatter</span></th>
+            <th class="grp grp-ch" data-tip="Chatter toward each side of the trade (Mgr. A | Mgr. B), from the 10 managers outside the trade, in the 4 days after a 2026+ trade. Green = positive, red = negative, yellow = strongly mixed; circle size = strength (yellow: spread of opinions). Hollow = nobody weighed in. Hover for who said what.">Chatter</th>
           </tr>
           <tr>
+            <th class="sortable" data-key="a"><span class="th-label">Mgr A</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="rankA"><span class="th-label">Fin</span><span class="sort-arrow"></span></th>
+            <th class="sortable" data-key="b"><span class="th-label">Mgr B</span><span class="sort-arrow"></span></th>
+            <th class="sortable num" data-key="rankB"><span class="th-label">Fin</span><span class="sort-arrow"></span></th>
+            <th data-tip="Players Mgr. A received (with their trade value).">A Got</th>
+            <th data-tip="Players Mgr. B received (with their trade value).">B Got</th>
             <th class="sortable num num-right" data-key="gotA" data-tip="Trade value of what Mgr. A received."><span class="th-label">A</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right" data-key="gotB" data-tip="Trade value of what Mgr. B received."><span class="th-label">B</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right" data-key="tv" data-tip="Total trade value moved (both sides)."><span class="th-label">Tot</span><span class="sort-arrow"></span></th>
@@ -408,6 +418,7 @@
             <th class="sortable num num-right fp-col par-col" data-key="lgGa" data-tip="Lineup gain per week for Mgr. A: total divided by the weeks the trade was in effect for A's roster."><span class="th-label">A/G</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right fp-col par-col" data-key="lgGb" data-tip="Lineup gain per week for Mgr. B: total divided by the weeks the trade was in effect for B's roster."><span class="th-label">B/G</span><span class="sort-arrow"></span></th>
             <th class="sortable num num-right fp-col par-col" data-key="lgNet" data-tip="Lineup gain for Mgr. A minus lineup gain for Mgr. B. The two sides do not have to cancel out: a deal can help both rosters or hurt both."><span class="th-label">Net</span><span class="sort-arrow"></span></th>
+            <th class="num" data-tip="Chatter score toward Mgr. A | Mgr. B."><span class="th-label">A | B</span></th>
           </tr></thead>
           <tbody id="logBody"></tbody>
         </table>
@@ -426,6 +437,7 @@
 </div>
 
 <div id="viewPlayers" style="display:none; flex-direction:column; gap:14px;">
+  <div class="season-slot" id="seasonSlotPlayers"></div>
   <div class="panel">
     <div class="players-toolbar">
       <h3 class="log-subhead">Players traded <span id="playersCount"></span></h3>
@@ -1521,6 +1533,7 @@ function renderPlayers(){
       document.getElementById('viewNetwork').style.display = currentView === 'network' ? 'flex' : 'none';
       document.getElementById('viewPlayers').style.display = currentView === 'players' ? 'flex' : 'none';
       document.getElementById('modeControls').style.display = currentView === 'network' ? '' : 'none';
+      document.getElementById(currentView === 'network' ? 'seasonSlotNet' : 'seasonSlotPlayers').appendChild(els.seasonChips);
       hideTip();
       render();
     });
@@ -1553,9 +1566,9 @@ function lgSideBlock(tc, who, rec, v, other){
     if(p.r) return how === 'dropped' ? `dropped by ${who} after wk${w}` : (how === 'traded' ? `traded on by ${who} after wk${w}` : `left ${who}&rsquo;s roster after wk${w}`);
     return how === 'dropped' ? `${other} dropped him after wk${w}` : (how === 'traded' ? `${other} traded him on after wk${w}` : `left ${other}&rsquo;s roster after wk${w}`);
   };
-  const plLine = (p)=> `<span><span class="tt-p">${abbrevPlayer(p.n)}</span> <b class="${p.d > 0 ? 'net-pos' : (p.d < 0 ? 'net-neg' : '')}">${(p.d > 0 ? '+' : '') + p.d.toFixed(1)}</b> <span style="opacity:.65">(${p.s} wk${p.s!==1?'s':''} in lineup${p.x ? '; ' + moved(p) + (p.r ? '' : ', still counted as kept') : ''})</span></span>`;
+  const plLine = (p)=> `<span><span class="tt-p">${abbrevPlayer(p.n)}</span> <b class="${p.d > 0 ? 'net-pos' : (p.d < 0 ? 'net-neg' : '')}">${(p.d > 0 ? '+' : '') + p.d.toFixed(1)}</b> <span style="opacity:.65">(${p.s} wk${p.s!==1?'s':''} in lineup${p.x ? '; ' + moved(p) : ''})</span></span>`;
   const got = mine.filter(p=> p.r).map(plLine).join('<br>'), gave = mine.filter(p=> !p.r).map(plLine).join('<br>');
-  const plBlock = mine.length ? `<div class="tt-pl" style="margin-top:3px"><b>Got:</b><br>${got || '&mdash;'}</div><div class="tt-pl"><b>Gave up</b> <span style="opacity:.65">(what losing them cost the lineup)</span><b>:</b><br>${gave || '&mdash;'}</div>` : '';
+  const plBlock = mine.length ? `<div class="tt-pl" style="margin-top:3px"><b>Got:</b><br>${got || '&mdash;'}</div><div class="tt-pl"><b>Gave up</b> <span style="opacity:.65">(what losing each cost the lineup)</span><b>:</b><br>${gave || '&mdash;'}</div>` : '';
   const weeks = wk.map(x=> `<span style="white-space:nowrap">wk${x[0]} <b class="${x[1] > 0 ? 'net-pos' : (x[1] < 0 ? 'net-neg' : '')}">${(x[1] > 0 ? '+' : '') + x[1].toFixed(1)}</b></span>`).join(' &middot; ');
   return `<div class="tt-list" style="color:${tc(who)}">
       <b>${who}</b> &mdash; ${signedNet(v)} over ${rec.n} wk${rec.n!==1?'s':''} (wk${rec.w0}${rec.w1 !== rec.w0 ? '&ndash;' + rec.w1 : ''})
@@ -1574,7 +1587,7 @@ function tipForParTrade(t){
     ${lgSideBlock(tc, t.b, d.b, t.lgb, t.a)}
     <div class="tt-net"><span class="k">Net &Delta;</span>${winnerChip(tc, t.a, t.b, t.lga - t.lgb)}</div>
     <div class="tt-net"><span class="k">Per week</span>${[['a', t.lga], ['b', t.lgb]].map(([k, v])=>{ const g = d[k] ? d[k].n : 0; return g > 0 ? `<span style="color:${tc(t[k])};font-weight:600">${t[k]}</span> ${signedNet(+(v / g).toFixed(2))}` : ''; }).filter(Boolean).join('<span class="sep">|</span>') || '<span style="opacity:.6">n/a</span>'}</div>
-    <div class="tt-more">Each week: best possible lineup the roster could start (bench included) with the trade, minus the best lineup after undoing the trade. Player figures split that gain between the players in the deal (each one&rsquo;s average effect on the best lineup, so they add up to the total). Sides need not cancel. See &ldquo;How lineup &Delta; is calculated&rdquo; below the table.</div>`;
+    <div class="tt-more">Each week: best possible lineup the roster could start (bench included) with the trade, minus the best lineup after undoing the trade. Each player figure is how much the best lineup drops if just that player&rsquo;s part of the deal is undone (everything else as is), so with overlapping players the figures may not add up to the total. Sides need not cancel. See &ldquo;How lineup &Delta; is calculated&rdquo; below the table.</div>`;
 }
 function tipForOwnerPar(name, totals){
   const all = totals.byTrade.filter(e=> e.parNet !== null && e.parNet !== undefined).sort((a,b)=> b.s - a.s || b.w - a.w);

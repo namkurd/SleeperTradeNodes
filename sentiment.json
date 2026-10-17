@@ -1,19 +1,79 @@
 {
-  "1408955960092794880": {"v": 2, "none": true, "notes": []},
+  "1408955960092794880": {
+    "v": 2,
+    "none": true,
+    "notes": []
+  },
   "1412110322529034240": {
     "v": 2,
     "notes": [
-      {"who": "Joe", "k": "say", "a": 0.8, "b": -0.6, "t": "Called Ben the winner; says Ben took advantage of Alex's thin, injured bench and Alex could have covered with a free agent. Likes Golden but thinks Stevenson is pointless."},
-      {"who": "Ankit", "k": "say", "a": 0.3, "b": 0.3, "t": "Tuten has good advanced stats, Golden passes the eye test, and Stevenson will keep a role."},
-      {"who": "Aidan", "k": "react", "a": 0.1, "b": 0.1, "t": "Thumbs-up on Ankit's take."},
-      {"who": "Alex", "inv": true, "t": "Likes Golden (about 10 targets a game) and Tuten (clear lead back, few targets); sees it as roughly fair once Stevenson is included."}
+      {
+        "who": "Joe",
+        "k": "say",
+        "a": 0.8,
+        "b": -0.6,
+        "t": "Called Ben the winner; says Ben took advantage of Alex's thin, injured bench and Alex could have covered with a free agent. Likes Golden but thinks Stevenson is pointless."
+      },
+      {
+        "who": "Ankit",
+        "k": "say",
+        "a": 0.3,
+        "b": 0.3,
+        "t": "Tuten has good advanced stats, Golden passes the eye test, and Stevenson will keep a role."
+      },
+      {
+        "who": "Aidan",
+        "k": "react",
+        "a": 0.1,
+        "b": 0.1,
+        "t": "Thumbs-up on Ankit's take."
+      },
+      {
+        "who": "Alex",
+        "inv": true,
+        "t": "Likes Golden (about 10 targets a game) and Tuten (clear lead back, few targets); sees it as roughly fair once Stevenson is included."
+      }
     ]
   },
   "1413537875986771968": {
     "v": 2,
     "notes": [
-      {"who": "Alex", "k": "say", "a": 0.8, "b": -0.8, "t": "Said Joe got fleeced and would have landed a fair deal by waiting about six hours."},
-      {"who": "Joe", "inv": true, "t": "Pushed back: he had another deal in the works and the player would not have been on his team six hours later."}
+      {
+        "who": "Alex",
+        "k": "say",
+        "a": 0.8,
+        "b": -0.8,
+        "t": "Said Joe got fleeced and would have landed a fair deal by waiting about six hours."
+      },
+      {
+        "who": "Joe",
+        "inv": true,
+        "t": "Pushed back: he had another deal in the works and the player would not have been on his team six hours later."
+      }
+    ]
+  },
+  "1414995420777607168": {
+    "v": 2,
+    "notes": [
+      {
+        "who": "Ankit",
+        "k": "say",
+        "a": -0.3,
+        "b": 0.3,
+        "t": "Quipped that sometimes you have to go backwards to go backwards, a mild dig at Joe's side."
+      },
+      {
+        "who": "Haan",
+        "k": "react",
+        "a": -0.1,
+        "b": 0.1,
+        "t": "Agreed (facts reaction) with Ankit's quip."
+      },
+      {
+        "who": "Joe",
+        "inv": true,
+        "t": "Joked that sometimes you have to go back to go forward, posting a couple of memes."
+      }
     ]
   }
 }

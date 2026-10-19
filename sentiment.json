@@ -83,7 +83,6 @@
   },
   "1416125315645739008": {
     "v": 2,
-    "open": true,
     "none": true,
     "notes": []
   },
@@ -113,5 +112,11 @@
         "t": "Sees it as roughly equal draft dollars swapped."
       }
     ]
+  },
+  "1417542856742088704": {
+    "v": 2,
+    "open": true,
+    "none": true,
+    "notes": []
   }
 }

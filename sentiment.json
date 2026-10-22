@@ -88,7 +88,6 @@
   },
   "1417335988040089600": {
     "v": 2,
-    "open": true,
     "notes": [
       {
         "who": "Joe",
@@ -100,9 +99,9 @@
       {
         "who": "Ben",
         "k": "say",
-        "a": 0.3,
-        "b": -0.3,
-        "t": "Likes it slightly more for Aidan, though Christian needed to make a move."
+        "a": 0.5,
+        "b": -0.5,
+        "t": "Prefers Aidan's side and calls him the real winner for the roster spots freed up."
       },
       {
         "who": "Ankit",

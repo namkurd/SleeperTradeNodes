@@ -114,8 +114,32 @@
   },
   "1417542856742088704": {
     "v": 2,
-    "open": true,
     "none": true,
     "notes": []
+  },
+  "1419003389915799552": {
+    "v": 2,
+    "open": true,
+    "notes": [
+      {
+        "who": "Aidan",
+        "k": "say",
+        "a": -1,
+        "b": 1,
+        "t": "Says Joe got fleeced."
+      },
+      {
+        "who": "Steven",
+        "k": "say",
+        "a": 0.3,
+        "b": -0.3,
+        "t": "Thinks Joe got the better end but it is close and fair either way."
+      },
+      {
+        "who": "Joe",
+        "inv": true,
+        "t": "Says the deal was straightforward: he made the offer and it was accepted."
+      }
+    ]
   }
 }

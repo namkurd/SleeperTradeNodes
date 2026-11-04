@@ -1773,5 +1773,18 @@ Promise.all([
       '<div style="padding:16px;border:1px solid var(--border);border-radius:10px;color:var(--text-2)">Could not load data.json (' + err + '). If you just set this page up, make sure update_league.py has run at least once and data.json sits next to this index.html.</div>');
   });
 </script>
+<script>
+/* Deep links from the DTF Club Record Book: ?season=2024&manager=Aidan filters this page to that year and manager. Safe to remove. */
+(function(){
+  var q=new URLSearchParams(location.search), y=q.get('season'), m=q.get('manager'); if(!y&&!m) return;
+  var n=0, t=setInterval(function(){
+    var chips=document.querySelectorAll('#seasonChips button'), ms=document.getElementById('tradeManagerFilter');
+    if(!(chips.length>1 && ms && ms.options.length>1)){ if(++n>100) clearInterval(t); return; }
+    clearInterval(t);
+    if(y){ for(var i=0;i<chips.length;i++){ if(chips[i].textContent.trim().indexOf(y)===0){ chips[i].click(); break; } } }
+    if(m){ ms.value=m; if(ms.value===m) ms.dispatchEvent(new Event('change')); }
+  },150);
+})();
+</script>
 </body>
 </html>

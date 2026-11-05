@@ -1226,12 +1226,31 @@ function renderGraph(activeManagers, pairs, degree, trades){
   graphHighlightFns = {highlight, highlightLink};
 
   if(sim) sim.stop();
+  // A narrow panel (a phone) gets a tighter layout, and the view is fitted to the nodes once they settle so none sit off the edge.
+  const k = Math.max(0.5, Math.min(1, width / 760));
+  let dragging = false, tickN = 0;
   sim = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d=>d.id).distance(d=> 170 - Math.min(90, widthScale(metricOf(d.pair))*6)).strength(0.5))
-    .force('charge', d3.forceManyBody().strength(-420))
+    .force('link', d3.forceLink(links).id(d=>d.id).distance(d=> (170 - Math.min(90, widthScale(metricOf(d.pair))*6)) * k).strength(0.5))
+    .force('charge', d3.forceManyBody().strength(-420 * k))
     .force('center', d3.forceCenter(width/2, height/2))
-    .force('collide', d3.forceCollide().radius(d=> rScale(state.mode==='count'? d.deg.count : d.deg.value) + 26))
-    .on('tick', ticked);
+    .force('collide', d3.forceCollide().radius(d=> rScale(state.mode==='count'? d.deg.count : d.deg.value) + 26 * k))
+    .on('tick', ticked)
+    .on('end', fitView);
+
+  // Zoom out (never in) so every node, with its name underneath, is inside the panel; centred on the graph.
+  function fitView(){
+    if(dragging) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    nodes.forEach(d=>{
+      const r = rScale(nodeMetric(d)), lw = Math.max(r, String(d.id).length * 3.6);
+      x0 = Math.min(x0, d.x - lw); x1 = Math.max(x1, d.x + lw);
+      y0 = Math.min(y0, d.y - r); y1 = Math.max(y1, d.y + r + 24);
+    });
+    if(!isFinite(x0)) return;
+    const pad = 14; x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
+    const sc = Math.max(1, (x1 - x0) / width, (y1 - y0) / height), vw = width * sc, vh = height * sc;
+    svg.attr('viewBox', [(x0 + x1) / 2 - vw / 2, (y0 + y1) / 2 - vh / 2, vw, vh]);
+  }
 
   function ticked(){
     linkG.each(function(d){
@@ -1249,13 +1268,14 @@ function renderGraph(activeManagers, pairs, degree, trades){
     lineB.attr('x1',d=>d._mx2).attr('y1',d=>d._my2)
         .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
     nodeG.attr('transform', d=>`translate(${d.x},${d.y})`);
+    if(++tickN % 4 === 0) fitView();
   }
 
   function drag(){
     return d3.drag()
-      .on('start', (ev,d)=>{ if(!ev.active) sim.alphaTarget(0.25).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('start', (ev,d)=>{ dragging = true; if(!ev.active) sim.alphaTarget(0.25).restart(); d.fx=d.x; d.fy=d.y; })
       .on('drag', (ev,d)=>{ d.fx=ev.x; d.fy=ev.y; })
-      .on('end', (ev,d)=>{ if(!ev.active) sim.alphaTarget(0); d.fx=null; d.fy=null; });
+      .on('end', (ev,d)=>{ dragging = false; if(!ev.active) sim.alphaTarget(0); d.fx=null; d.fy=null; });
   }
 }
 

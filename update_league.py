@@ -86,13 +86,18 @@ USERNAME_TO_FIRST = {
     "rrakower": "Ryan",
     "thehebrewhammer24": "Jake",
     "tkitaev": "Tommy",
-    "Kohogan18": "Kaitlyn",   # new 2026 owner
+    "kohagan18": "Kaitlyn",   # new 2026 owner (Sleeper appended digits to her name)
+    "Kohogan18": "Kaitlyn",
     "slondon1": "Stephanie",  # new 2026 owner
 }
 
 
 def canonical_manager(raw_name):
-    return USERNAME_TO_FIRST.get(raw_name, raw_name)
+    hit = USERNAME_TO_FIRST.get(raw_name)
+    if hit:
+        return hit
+    low = {k.lower(): v for k, v in USERNAME_TO_FIRST.items()}   # Sleeper usernames: capitalisation can differ from what we wrote down
+    return low.get(str(raw_name).lower(), raw_name)
 
 
 def reg_season_end_week(season):

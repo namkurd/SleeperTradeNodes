@@ -310,6 +310,8 @@
   svg text{font-family:var(--font-body); fill:var(--text);}
   .node-label{font-size:11.5px; font-weight:600; pointer-events:none;}
   .node-sub{font-size:9.5px; fill:var(--text-3); pointer-events:none;}
+  @keyframes dl-flash{0%,60%{background:rgba(240,145,74,.35);outline:2px solid #f0914a}100%{background:transparent;outline-color:transparent}}
+  tr.deeplink td{animation:dl-flash 6s ease-out 1}
 </style>
 </head>
 <body>
@@ -1796,13 +1798,21 @@ Promise.all([
 <script>
 /* Deep links from the DTF Club Record Book: ?season=2024&manager=Aidan filters this page to that year and manager. Safe to remove. */
 (function(){
-  var q=new URLSearchParams(location.search), y=q.get('season'), m=q.get('manager'); if(!y&&!m) return;
+  var q=new URLSearchParams(location.search), y=q.get('season'), m=q.get('manager'), tid=q.get('trade'); if(!y&&!m&&!tid) return;
   var n=0, t=setInterval(function(){
     var chips=document.querySelectorAll('#seasonChips button'), ms=document.getElementById('tradeManagerFilter');
     if(!(chips.length>1 && ms && ms.options.length>1)){ if(++n>100) clearInterval(t); return; }
     clearInterval(t);
     if(y){ for(var i=0;i<chips.length;i++){ if(chips[i].textContent.trim().indexOf(y)===0){ chips[i].click(); break; } } }
     if(m){ ms.value=m; if(ms.value===m) ms.dispatchEvent(new Event('change')); }
+    if(tid){   // ?trade=<id>: scroll to that trade in the log and flash it
+      var k=0, u=setInterval(function(){
+        var row=document.querySelector('#logBody tr[data-tid="'+String(tid).replace(/[^0-9A-Za-z_-]/g,'')+'"]');
+        if(!row){ if(++k>40) clearInterval(u); return; }
+        clearInterval(u); row.scrollIntoView({block:'center'}); row.classList.add('deeplink');
+        setTimeout(function(){ row.classList.remove('deeplink'); }, 6000);
+      },150);
+    }
   },150);
 })();
 </script>

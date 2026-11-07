@@ -86,36 +86,56 @@
     "none": true,
     "notes": []
   },
+  "1417542856742088704": {
+    "v": 2,
+    "none": true,
+    "notes": []
+  },
+  "1419824339624222720": {
+    "v": 2,
+    "none": true,
+    "notes": []
+  },
+  "1420117312211566592": {
+    "v": 2,
+    "none": true,
+    "notes": []
+  },
+  "1421920666378117120": {
+    "v": 2,
+    "none": true,
+    "notes": []
+  },
+  "1422256513308708864": {
+    "v": 2,
+    "none": true,
+    "notes": []
+  },
   "1417335988040089600": {
     "v": 2,
     "notes": [
       {
         "who": "Joe",
         "k": "say",
-        "a": -1,
-        "b": 1,
-        "t": "Says Aidan got fleeced."
+        "a": -0.8,
+        "b": 0.8,
+        "t": "Thinks Aidan got fleeced in the deal."
       },
       {
         "who": "Ben",
         "k": "say",
         "a": 0.5,
-        "b": -0.5,
-        "t": "Prefers Aidan's side and calls him the real winner for the roster spots freed up."
+        "b": -0.3,
+        "t": "Likes it more for Aidan, who also gains freed-up roster spots, though Christian needed to make a move."
       },
       {
         "who": "Ankit",
         "k": "say",
         "a": 0,
         "b": 0,
-        "t": "Sees it as roughly equal draft dollars swapped."
+        "t": "Sees it as an even swap of similar value."
       }
     ]
-  },
-  "1417542856742088704": {
-    "v": 2,
-    "none": true,
-    "notes": []
   },
   "1419003389915799552": {
     "v": 2,
@@ -132,52 +152,13 @@
         "k": "say",
         "a": 0.3,
         "b": -0.3,
-        "t": "Thinks Joe got the better end but it is close and fair either way."
+        "t": "Leans Joe got the better end but calls it close and fair."
       },
       {
         "who": "Joe",
         "inv": true,
-        "t": "Says the deal was straightforward: he made the offer and it was accepted."
+        "t": "Said the deal was straightforward: he made an offer and it was accepted."
       }
     ]
-  },
-  "1419824339624222720": {
-    "v": 2,
-    "none": true,
-    "notes": []
-  },
-  "1420117312211566592": {
-    "v": 2,
-    "notes": [
-      {
-        "who": "Ben",
-        "k": "say",
-        "a": -0.3,
-        "b": 0.3,
-        "t": "Questions why Joe would give up Dobbins for $50 FAAB and not even start him."
-      },
-      {
-        "who": "Aidan",
-        "k": "say",
-        "a": 0,
-        "b": 0,
-        "t": "Jokes that FAAB means nothing."
-      },
-      {
-        "who": "Joe",
-        "inv": true,
-        "t": "Says FAAB is losing value fast, he has RB trouble, and he would rather have Dobbins back."
-      }
-    ]
-  },
-  "1421920666378117120": {
-    "v": 2,
-    "none": true,
-    "notes": []
-  },
-  "1422256513308708864": {
-    "v": 2,
-    "none": true,
-    "notes": []
   }
 }

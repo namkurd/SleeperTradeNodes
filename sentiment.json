@@ -160,5 +160,42 @@
         "t": "Said the deal was straightforward: he made an offer and it was accepted."
       }
     ]
+  },
+  "1426282333882822656": {
+    "v": 2,
+    "open": true,
+    "notes": [
+      {
+        "who": "Steven",
+        "k": "say",
+        "a": 1,
+        "b": -1,
+        "t": "Called it a fleece by Joe and a gift, saying Ankit got almost nothing back."
+      },
+      {
+        "who": "Ben",
+        "k": "say",
+        "a": -0.6,
+        "b": 0.6,
+        "t": "Likes the deal for Ankit given the injury timing and the quarterback's likely rebound."
+      },
+      {
+        "who": "Jake",
+        "k": "say",
+        "a": 0,
+        "b": 0,
+        "t": "Called it a dead even trade."
+      },
+      {
+        "who": "Joe",
+        "inv": true,
+        "t": "Joked off the fleece comment and moved on to other chatter."
+      },
+      {
+        "who": "Ankit",
+        "inv": true,
+        "t": "Defended buying low on a struggling quarterback."
+      }
+    ]
   }
 }

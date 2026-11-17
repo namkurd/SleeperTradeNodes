@@ -196,5 +196,42 @@
         "t": "Defended buying low on a struggling quarterback."
       }
     ]
+  },
+  "1428147026687721472": {
+    "v": 2,
+    "open": true,
+    "notes": [
+      {
+        "who": "Joe",
+        "k": "say",
+        "a": 1,
+        "b": -1,
+        "t": "Said flatly that Steven got fleeced."
+      },
+      {
+        "who": "Ben",
+        "k": "say",
+        "a": 0.8,
+        "b": -0.6,
+        "t": "Sees a big win for Jake and thinks Steven is now thin at running back and quarterback."
+      },
+      {
+        "who": "Aidan",
+        "k": "say",
+        "a": 0.8,
+        "b": -0.8,
+        "t": "Joked that landing Puka was a golden fleece for Jake."
+      },
+      {
+        "who": "Steven",
+        "inv": true,
+        "t": "Admitted he probably lost it but says his bench backs can step up and he was wary of Bucky's workload."
+      },
+      {
+        "who": "Jake",
+        "inv": true,
+        "t": "Hyped the deal as a legacy-swinging move after two contenders chased the same player."
+      }
+    ]
   }
 }

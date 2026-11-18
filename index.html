@@ -110,6 +110,7 @@
     background:color-mix(in srgb, var(--surface) 88%, transparent); padding:8px 10px; border-radius:10px;
     border:1px solid var(--border-soft);
   }
+  @media (max-width:760px){ .legend{position:static; margin:0 12px 12px; align-self:stretch;} .graph-panel{display:flex; flex-direction:column;} }   /* a phone: the key sits under the graph, not over its nodes */
   .legend .row{display:flex; align-items:center; gap:7px;}
   .legend .swatch{width:20px; height:3px; border-radius:2px; background:var(--count-line);}
   .legend .swatch-split{width:20px; height:3px; border-radius:2px; flex-shrink:0;
@@ -127,20 +128,21 @@
     text-transform:uppercase; color:var(--text-2); margin:0 0 10px;
   }
   .rank-row{
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:12.5px;
+    display:grid; grid-template-columns:minmax(0,1fr) 44px minmax(34px,auto); align-items:center; gap:8px;
+    padding:3px 0; border-bottom:1px solid var(--border-soft); font-size:12px; line-height:1.3;
   }
   .rank-row:last-child{border-bottom:none;}
   .rank-row[data-idx], .pair-bar[data-idx]{cursor:help;}
   .rank-row .who{display:flex; align-items:center; gap:6px; min-width:0;}
   .rank-row .who span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .rank-row .amt{font-family:var(--font-mono); font-weight:600; font-variant-numeric:tabular-nums; flex:none;}
-  .pair-bar{height:3px; border-radius:2px; margin-top:4px; background:var(--surface-2); overflow:hidden;}
+  .rank-row .amt{font-family:var(--font-mono); font-weight:600; font-variant-numeric:tabular-nums; text-align:right;}
+  .rank-row > span{grid-column:1 / -1;}   /* the 'no trades' message */
+  .pair-bar{height:4px; border-radius:2px; background:var(--surface-2); overflow:hidden;}
   .pair-bar > i{display:block; height:100%; background:var(--count-line);}
   .mode-value .pair-bar > i{background:var(--value-line);}
   /* Fixed to the height that used to hold exactly 8 rows, so the panel's footprint never
      grows - the rest of the pairs (there can be 30+) scroll inside that same box instead. */
-  #rankList{max-height:308px; overflow-y:auto; overflow-x:hidden; padding-right:6px; margin-right:-6px;}
+  #rankList{max-height:210px; overflow-y:auto; overflow-x:hidden; padding-right:6px; margin-right:-6px;}
   #rankList::-webkit-scrollbar{width:6px;}
   #rankList::-webkit-scrollbar-track{background:transparent;}
   #rankList::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
@@ -728,9 +730,9 @@ function renderRank(pairs){
     const pct = Math.max(6, Math.round(100*(state.mode==='count'?p.count:p.value)/max));
     return `<div class="rank-row" data-idx="${i}">
       <div class="who"><span>${p.a} &harr; ${p.b}</span></div>
+      <div class="pair-bar" data-idx="${i}"><i style="width:${pct}%"></i></div>
       <div class="amt">${val}</div>
-    </div>
-    <div class="pair-bar" data-idx="${i}"><i style="width:${pct}%"></i></div>`;
+    </div>`;
   }).join('') || '<div class="rank-row"><span>No trades in this filter.</span></div>';
 }
 let lastRankPairs = [];
@@ -1102,7 +1104,7 @@ function renderGraph(activeManagers, pairs, degree, trades){
   const svg = d3.select('#graph');
   svg.selectAll('*').remove();
   const wrap = document.querySelector('.graph-panel');
-  const width = wrap.clientWidth, height = wrap.clientHeight || 560;
+  const width = wrap.clientWidth, height = svg.node().clientHeight || 560;   // the graph's own height: on a phone the key sits below it
   svg.attr('viewBox', [0,0,width,height]);
 
   els.emptyState.hidden = pairs.length > 0 || activeManagers.length > 0;
@@ -1235,6 +1237,7 @@ function renderGraph(activeManagers, pairs, degree, trades){
     .force('link', d3.forceLink(links).id(d=>d.id).distance(d=> (170 - Math.min(90, widthScale(metricOf(d.pair))*6)) * k).strength(0.5))
     .force('charge', d3.forceManyBody().strength(-420 * k))
     .force('center', d3.forceCenter(width/2, height/2))
+    .force('gx', d3.forceX(width/2).strength(0.07)).force('gy', d3.forceY(height/2).strength(0.07))   // a gentle pull to the middle keeps separate groups of owners from drifting far apart
     .force('collide', d3.forceCollide().radius(d=> rScale(state.mode==='count'? d.deg.count : d.deg.value) + 26 * k))
     .on('tick', ticked)
     .on('end', fitView);
@@ -1249,8 +1252,8 @@ function renderGraph(activeManagers, pairs, degree, trades){
       y0 = Math.min(y0, d.y - r); y1 = Math.max(y1, d.y + r + 24);
     });
     if(!isFinite(x0)) return;
-    const pad = 14; x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
-    const sc = Math.max(1, (x1 - x0) / width, (y1 - y0) / height), vw = width * sc, vh = height * sc;
+    const pad = 30; x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;   // room to spare around the whole network
+    const sc = Math.max(1, (x1 - x0) / width, (y1 - y0) / height) * 1.06, vw = width * sc, vh = height * sc;
     svg.attr('viewBox', [(x0 + x1) / 2 - vw / 2, (y0 + y1) / 2 - vh / 2, vw, vh]);
   }
 

@@ -110,6 +110,7 @@
     background:color-mix(in srgb, var(--surface) 88%, transparent); padding:8px 10px; border-radius:10px;
     border:1px solid var(--border-soft);
   }
+  @media (max-width:760px){ .legend{position:static; margin:0 12px 12px; align-self:stretch;} .graph-panel{display:flex; flex-direction:column;} }   /* a phone: the key sits under the graph, not over its nodes */
   .legend .row{display:flex; align-items:center; gap:7px;}
   .legend .swatch{width:20px; height:3px; border-radius:2px; background:var(--count-line);}
   .legend .swatch-split{width:20px; height:3px; border-radius:2px; flex-shrink:0;
@@ -1102,7 +1103,7 @@ function renderGraph(activeManagers, pairs, degree, trades){
   const svg = d3.select('#graph');
   svg.selectAll('*').remove();
   const wrap = document.querySelector('.graph-panel');
-  const width = wrap.clientWidth, height = wrap.clientHeight || 560;
+  const width = wrap.clientWidth, height = svg.node().clientHeight || 560;   // the graph's own height: on a phone the key sits below it
   svg.attr('viewBox', [0,0,width,height]);
 
   els.emptyState.hidden = pairs.length > 0 || activeManagers.length > 0;
@@ -1235,6 +1236,7 @@ function renderGraph(activeManagers, pairs, degree, trades){
     .force('link', d3.forceLink(links).id(d=>d.id).distance(d=> (170 - Math.min(90, widthScale(metricOf(d.pair))*6)) * k).strength(0.5))
     .force('charge', d3.forceManyBody().strength(-420 * k))
     .force('center', d3.forceCenter(width/2, height/2))
+    .force('gx', d3.forceX(width/2).strength(0.07)).force('gy', d3.forceY(height/2).strength(0.07))   // a gentle pull to the middle keeps separate groups of owners from drifting far apart
     .force('collide', d3.forceCollide().radius(d=> rScale(state.mode==='count'? d.deg.count : d.deg.value) + 26 * k))
     .on('tick', ticked)
     .on('end', fitView);
@@ -1249,8 +1251,8 @@ function renderGraph(activeManagers, pairs, degree, trades){
       y0 = Math.min(y0, d.y - r); y1 = Math.max(y1, d.y + r + 24);
     });
     if(!isFinite(x0)) return;
-    const pad = 14; x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
-    const sc = Math.max(1, (x1 - x0) / width, (y1 - y0) / height), vw = width * sc, vh = height * sc;
+    const pad = 30; x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;   // room to spare around the whole network
+    const sc = Math.max(1, (x1 - x0) / width, (y1 - y0) / height) * 1.06, vw = width * sc, vh = height * sc;
     svg.attr('viewBox', [(x0 + x1) / 2 - vw / 2, (y0 + y1) / 2 - vh / 2, vw, vh]);
   }
 

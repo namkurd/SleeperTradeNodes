@@ -128,20 +128,21 @@
     text-transform:uppercase; color:var(--text-2); margin:0 0 10px;
   }
   .rank-row{
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:12.5px;
+    display:grid; grid-template-columns:minmax(0,1fr) 44px minmax(34px,auto); align-items:center; gap:8px;
+    padding:3px 0; border-bottom:1px solid var(--border-soft); font-size:12px; line-height:1.3;
   }
   .rank-row:last-child{border-bottom:none;}
   .rank-row[data-idx], .pair-bar[data-idx]{cursor:help;}
   .rank-row .who{display:flex; align-items:center; gap:6px; min-width:0;}
   .rank-row .who span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .rank-row .amt{font-family:var(--font-mono); font-weight:600; font-variant-numeric:tabular-nums; flex:none;}
-  .pair-bar{height:3px; border-radius:2px; margin-top:4px; background:var(--surface-2); overflow:hidden;}
+  .rank-row .amt{font-family:var(--font-mono); font-weight:600; font-variant-numeric:tabular-nums; text-align:right;}
+  .rank-row > span{grid-column:1 / -1;}   /* the 'no trades' message */
+  .pair-bar{height:4px; border-radius:2px; background:var(--surface-2); overflow:hidden;}
   .pair-bar > i{display:block; height:100%; background:var(--count-line);}
   .mode-value .pair-bar > i{background:var(--value-line);}
   /* Fixed to the height that used to hold exactly 8 rows, so the panel's footprint never
      grows - the rest of the pairs (there can be 30+) scroll inside that same box instead. */
-  #rankList{max-height:308px; overflow-y:auto; overflow-x:hidden; padding-right:6px; margin-right:-6px;}
+  #rankList{max-height:210px; overflow-y:auto; overflow-x:hidden; padding-right:6px; margin-right:-6px;}
   #rankList::-webkit-scrollbar{width:6px;}
   #rankList::-webkit-scrollbar-track{background:transparent;}
   #rankList::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
@@ -729,9 +730,9 @@ function renderRank(pairs){
     const pct = Math.max(6, Math.round(100*(state.mode==='count'?p.count:p.value)/max));
     return `<div class="rank-row" data-idx="${i}">
       <div class="who"><span>${p.a} &harr; ${p.b}</span></div>
+      <div class="pair-bar" data-idx="${i}"><i style="width:${pct}%"></i></div>
       <div class="amt">${val}</div>
-    </div>
-    <div class="pair-bar" data-idx="${i}"><i style="width:${pct}%"></i></div>`;
+    </div>`;
   }).join('') || '<div class="rank-row"><span>No trades in this filter.</span></div>';
 }
 let lastRankPairs = [];

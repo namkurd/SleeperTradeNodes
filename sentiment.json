@@ -199,7 +199,6 @@
   },
   "1428147026687721472": {
     "v": 2,
-    "open": true,
     "notes": [
       {
         "who": "Joe",
@@ -221,6 +220,13 @@
         "a": 0.8,
         "b": -0.8,
         "t": "Joked that landing Puka was a golden fleece for Jake."
+      },
+      {
+        "who": "Ankit",
+        "k": "say",
+        "a": 0.3,
+        "b": -0.3,
+        "t": "Called Puka a nutcase who will burn whichever team ends up with him."
       },
       {
         "who": "Steven",

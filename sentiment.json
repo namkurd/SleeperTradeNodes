@@ -273,8 +273,14 @@
   "1429908818338250752": {
     "v": 2,
     "open": true,
-    "none": true,
     "notes": [
+      {
+        "who": "Ben",
+        "k": "say",
+        "a": 0.6,
+        "b": -0.6,
+        "t": "Called it a strong pickup for Aidan and questioned why Ankit did it given his flex depth."
+      },
       {
         "who": "Aidan",
         "inv": true,

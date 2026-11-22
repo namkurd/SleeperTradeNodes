@@ -239,5 +239,47 @@
         "t": "Hyped the deal as a legacy-swinging move after two contenders chased the same player."
       }
     ]
+  },
+  "1429905404267081728": {
+    "v": 2,
+    "open": true,
+    "notes": [
+      {
+        "who": "Joe",
+        "k": "say",
+        "a": 1,
+        "b": -1,
+        "t": "Declared Steven got fleeced, calling Monangai a worse back on a worse offense."
+      },
+      {
+        "who": "Aidan",
+        "k": "say",
+        "a": 0.3,
+        "b": -0.3,
+        "t": "Joked he liked it better when Alex had no second running back this week."
+      },
+      {
+        "who": "Steven",
+        "inv": true,
+        "t": "Defended the move as zigging against the crowd and pointed to Monangai's playoff schedule."
+      },
+      {
+        "who": "Alex",
+        "inv": true,
+        "t": "Shared a screenshot and cheered with a playful chant."
+      }
+    ]
+  },
+  "1429908818338250752": {
+    "v": 2,
+    "open": true,
+    "none": true,
+    "notes": [
+      {
+        "who": "Aidan",
+        "inv": true,
+        "t": "Noted he now has a rare quarterback, receiver and back stack."
+      }
+    ]
   }
 }

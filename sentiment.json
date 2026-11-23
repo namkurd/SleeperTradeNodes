@@ -249,7 +249,14 @@
         "k": "say",
         "a": 1,
         "b": -1,
-        "t": "Declared Steven got fleeced, calling Monangai a worse back on a worse offense."
+        "t": "Said Steven got fleeced, swapping for a banged-up back on an offense that just lost its quarterback."
+      },
+      {
+        "who": "Stephanie",
+        "k": "say",
+        "a": -0.6,
+        "b": 0.6,
+        "t": "Thought the deal was better for Steven and would rather roster Stevenson despite Monangai's upside."
       },
       {
         "who": "Aidan",
@@ -259,14 +266,21 @@
         "t": "Joked he liked it better when Alex had no second running back this week."
       },
       {
+        "who": "Ben",
+        "k": "say",
+        "a": 0,
+        "b": 0.3,
+        "t": "Called it a decent move for Steven but doubted Stevenson delivers in the playoffs without his quarterback."
+      },
+      {
         "who": "Steven",
         "inv": true,
-        "t": "Defended the move as zigging against the crowd and pointed to Monangai's playoff schedule."
+        "t": "Defended the move as zigging against the crowd, citing the starting role, added FAAB and playoff matchups."
       },
       {
         "who": "Alex",
         "inv": true,
-        "t": "Shared a screenshot and cheered with a playful chant."
+        "t": "Shared a screenshot, cheered with a playful chant, and wondered if it was fair for both sides."
       }
     ]
   },
@@ -282,9 +296,16 @@
         "t": "Called it a strong pickup for Aidan and questioned why Ankit did it given his flex depth."
       },
       {
+        "who": "Steven",
+        "k": "say",
+        "a": 0,
+        "b": 0,
+        "t": "First said it helps Ankit in a must-win week, then backed off after seeing his lineup."
+      },
+      {
         "who": "Aidan",
         "inv": true,
-        "t": "Noted he now has a rare quarterback, receiver and back stack."
+        "t": "Noted he now has a rare quarterback, receiver and back stack and punned about getting Breece."
       }
     ]
   }

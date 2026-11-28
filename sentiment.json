@@ -310,7 +310,14 @@
   "1431508326956400640": {
     "v": 2,
     "open": true,
-    "none": true,
-    "notes": []
+    "notes": [
+      {
+        "who": "Aidan",
+        "k": "say",
+        "a": -1,
+        "b": 1,
+        "t": "Thinks Alex got fleeced in this deal."
+      }
+    ]
   }
 }
